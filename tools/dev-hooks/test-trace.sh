@@ -355,4 +355,52 @@ echo "PASS: Slash-skill prompt records skill_invocation event"
 rm -rf "$traceDir8" "$stateDir8"
 
 echo ""
+echo "=== Test: QoderWork MCP wrapper records inner MCP tool ==="
+
+export ALIBABACLOUD_TRACE="true"
+traceDir9="$(mktemp -d)"
+stateDir9="$(mktemp -d)"
+export ALIBABACLOUD_TRACE_DIR="$traceDir9"
+export ALIBABACLOUD_TELEMETRY_STATE_DIR="$stateDir9"
+export QODER_WORK="1"
+
+echo '{"session_id":"trace-qw-mcp","prompt":"用 qoderwork mcp 查 ECS skill","hook_event_name":"UserPromptSubmit"}' | \
+    python3 "$HOOKS_DIR/lib/prompt_handler.py" > /dev/null 2>&1 || true
+
+echo '{"session_id":"trace-qw-mcp","tool_name":"qw_mcp_call","tool_use_id":"toolu_qw_mcp_trace","tool_input":{"toolName":"mcp__alibabacloud-core__AlibabaCloud___CallCLI","arguments":{"command":"aliyun agentexplorer search-skills --keyword ECS --max-results 30 --region cn-hangzhou --user-agent AlibabaCloud-Agent-Skills/alibabacloud-find-skills"}},"hook_event_name":"PreToolUse"}' | \
+    python3 "$HOOKS_DIR/lib/pre_handler.py" > /dev/null 2>&1 || true
+
+echo '{"session_id":"trace-qw-mcp","tool_name":"qw_mcp_call","tool_use_id":"toolu_qw_mcp_trace","tool_input":{"toolName":"mcp__alibabacloud-core__AlibabaCloud___CallCLI","arguments":{"command":"aliyun agentexplorer search-skills --keyword ECS --max-results 30 --region cn-hangzhou --user-agent AlibabaCloud-Agent-Skills/alibabacloud-find-skills"}},"tool_response":[{"type":"text","text":"{\"requestId\":\"AC9002D7-6855-56DA-B39E-FA0B8E90B0D0\",\"data\":[]}"}],"hook_event_name":"PostToolUse"}' | \
+    python3 "$HOOKS_DIR/lib/post_handler.py" > /dev/null 2>&1 || true
+
+traceFile9="$traceDir9/trace-qw-mcp.jsonl"
+if [ ! -f "$traceFile9" ]; then
+    echo "FAIL: qoderwork MCP wrapper trace file not created"
+    ls -la "$traceDir9"
+    exit 1
+fi
+
+if ! grep -q '"event": "tool_start"' "$traceFile9" || ! grep -q '"event": "tool_end"' "$traceFile9"; then
+    echo "FAIL: qoderwork MCP wrapper missing tool_start/tool_end"
+    cat "$traceFile9"
+    exit 1
+fi
+
+if ! grep -q '"tool_name": "mcp__alibabacloud-core__AlibabaCloud___CallCLI"' "$traceFile9"; then
+    echo "FAIL: qoderwork MCP wrapper did not normalize tool_name"
+    cat "$traceFile9"
+    exit 1
+fi
+
+if ! grep -q '"skill_tag": "alibabacloud:alibabacloud-find-skills"' "$traceFile9"; then
+    echo "FAIL: qoderwork MCP wrapper did not preserve skill_tag"
+    cat "$traceFile9"
+    exit 1
+fi
+
+echo "PASS: QoderWork MCP wrapper records inner MCP tool"
+unset QODER_WORK
+rm -rf "$traceDir9" "$stateDir9"
+
+echo ""
 echo "=== All trace tests passed ==="

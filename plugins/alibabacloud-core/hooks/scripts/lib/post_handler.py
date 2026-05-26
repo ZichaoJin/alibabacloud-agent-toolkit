@@ -30,6 +30,7 @@ PLUGIN_PREFIX = "alibabacloud"
 STDIN_CAP = 10 * 1024 * 1024  # 10 MB — full response bodies can legitimately exceed 64 KB
 JSON_PARSE_WINDOW = 16384
 ERROR_REGEX_WINDOW = 500
+QODERWORK_MCP_WRAPPERS = ("qw_mcp_call", "qw_mcp_get")
 
 
 def detect_client(payload_str: str) -> str:
@@ -56,6 +57,19 @@ def iso_from_ms(ms: int) -> str:
 
 def _sanitize_tool_name(tool_name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]", "_", tool_name or "")[:120]
+
+
+def normalize_tool_call(tool_name: str, tool_input: Any) -> tuple[str, Any]:
+    """Unwrap QoderWork MCP wrapper payloads into the inner MCP tool shape."""
+    if tool_name not in QODERWORK_MCP_WRAPPERS or not isinstance(tool_input, dict):
+        return tool_name, tool_input
+    inner_name = tool_input.get("toolName") or tool_input.get("tool_name") or ""
+    if not isinstance(inner_name, str) or not inner_name:
+        return tool_name, tool_input
+    inner_input = tool_input.get("arguments")
+    if not isinstance(inner_input, dict):
+        inner_input = {}
+    return inner_name, inner_input
 
 
 SKILLS_PATH_RE = re.compile(
@@ -176,11 +190,14 @@ def _cloud_api_meta(
 
 # Aliyun CLI invocation: matches `aliyun ...` at start of command OR
 # after a shell separator (`&&`, `||`, `;`, `|`, `\n`, `(`), with optional
-# `ENV=val` prefixes. Word-bounded (excludes `aliyun-cli`, `myaliyun`).
+# `ENV=val` prefixes and optional path prefix (e.g. `/usr/local/bin/aliyun`).
+# Word-bounded (excludes `aliyun-cli`, `myaliyun`, `cat /var/log/aliyun.log`).
+# Kept in sync with pre_handler.ALIYUN_INVOCATION_RE.
 ALIYUN_INVOCATION_RE = re.compile(
     r"(?:^|[;&|\n(])"
     r"\s*"
     r"(?:[A-Z][A-Z0-9_]*=\S+\s+)*"
+    r"(?:[^\s;&|]*/)?"
     r"aliyun"
     r"(?=\s|$|[;&|])"
 )
@@ -302,6 +319,10 @@ def classify_with_reason(
         m2 = re.search(r"mcp__plugin_(alibabacloud[-_a-z0-9]+?)_", tool_name, re.IGNORECASE)
         if m2:
             seed["plugin_name"] = m2.group(1)
+        else:
+            m3 = re.search(r"mcp__(alibabacloud[-_a-z0-9]+?)__", tool_name, re.IGNORECASE)
+            if m3:
+                seed["plugin_name"] = m3.group(1)
         # Lift tool input into cli_command for audit. All AlibabaCloud___*
         # MCP tools' inputs are aliyun operational context (product / API
         # names, queries, URLs, JSON params) and considered non-sensitive;
@@ -655,6 +676,7 @@ def main() -> int:
 
     tool_name = data.get("tool_name") or ""
     tool_input = data.get("tool_input") or {}
+    tool_name, tool_input = normalize_tool_call(tool_name, tool_input)
     session_id = data.get("session_id") or ""
     tool_use_id = data.get("tool_use_id") or ""
     hook_event_name = data.get("hook_event_name") or ""
@@ -683,9 +705,7 @@ def main() -> int:
             with SessionState(client, session_id) as st:
                 # Dedup: some clients (claude-code) fire PostToolUse twice
                 # for the same Skill call. Without dedup we'd emit duplicate
-                # trace events, double-upload to remote, and create cycles
-                # in the span tree (each invocation reads then writes
-                # current_skill_span_id).
+                # trace events and double-upload to remote telemetry.
                 dedup_key = tool_use_id or f"{tool_name}:{marker_key}"
                 posted = st.data.setdefault("posted_tool_use_ids", [])
                 if dedup_key in posted:
@@ -796,45 +816,23 @@ def main() -> int:
             this_span_id = tool_use_id or marker_key
             try:
                 with SessionState(client, session_id) as st:
-                    # Prefer the parent recorded at pre-tool-trace time
-                    # (turn_spans entry). At start time we captured the
-                    # correct parent — typically the prompt for top-level
-                    # tools, or the current skill for nested ones. Re-reading
-                    # current_skill_span_id here would incorrectly nest
-                    # parallel siblings under whichever sibling's PostToolUse
-                    # fired first.
+                    # Reuse the parent that pre-tool-trace stamped into
+                    # turn_spans; fall back to prompt_span_id otherwise.
+                    # All tools (including skill_invocations) parent to the
+                    # prompt span — there is no longer a nested span tree.
                     pre_parent = None
                     for s in (st.data.get("turn_spans") or []):
                         if s.get("span_id") == this_span_id:
                             pre_parent = s.get("parent_span_id")
                             break
-                    if pre_parent is not None:
-                        parent_span = pre_parent
-                    else:
-                        parent_span = (
-                            st.data.get("current_skill_span_id")
-                            or st.data.get("prompt_span_id")
-                        )
-                    # Skills are always direct children of the prompt, never
-                    # of another skill. Otherwise sequential skill_invocations
-                    # within one prompt (e.g. Claude: model calls sdk-usage,
-                    # waits, then calls terraform-usage) would chain into a
-                    # ladder because the second skill's PRE fires after the
-                    # first's POST already wrote current_skill_span_id.
+                    parent_span = (
+                        pre_parent
+                        if pre_parent is not None
+                        else st.data.get("prompt_span_id")
+                    )
+                    # Stamp skill_invocation into turn_spans so token
+                    # aggregation can still find it.
                     if seed.get("event_type") == "skill_invocation":
-                        parent_span = st.data.get("prompt_span_id")
-                    # Never let a span be its own parent (would create a
-                    # cycle when a duplicate PostToolUse for a Skill reads
-                    # current_skill_span_id that the first call just set to
-                    # this same id).
-                    if parent_span == this_span_id:
-                        parent_span = st.data.get("prompt_span_id")
-                        if parent_span == this_span_id:
-                            parent_span = None
-                    # If this tool is a skill_invocation, take ownership of
-                    # current_skill_span_id and stamp turn_spans.
-                    if seed.get("event_type") == "skill_invocation":
-                        st.data["current_skill_span_id"] = this_span_id
                         st.data.setdefault("turn_spans", []).append({
                             "span_id": this_span_id,
                             "parent_span_id": parent_span,

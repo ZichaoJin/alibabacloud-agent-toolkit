@@ -258,7 +258,6 @@ def main() -> int:
                 st.data.pop("pending_prompt", None)
                 st.data.pop("pending_prompt_ts", None)
                 st.data.pop("prompt_span_id", None)
-                st.data["current_skill_span_id"] = None
                 st.data["turn_spans"] = []
                 # Clear post-tool-use dedup set — claude double-fires are
                 # always within the same turn, so this keeps memory bounded

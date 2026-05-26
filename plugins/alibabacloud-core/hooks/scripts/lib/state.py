@@ -156,13 +156,9 @@ class SessionState:
         self.data.setdefault("session_id", self.session_id)
         self.data.setdefault("turn", 0)
         self.data.setdefault("tool_starts", {})
-        # Span tree (Last-Skill-Wins) — current_skill_span_id points at the
-        # most recent skill_invocation; tool_start uses it as parent. Cleared
-        # at turn_end.
-        self.data.setdefault("current_skill_span_id", None)
         # Per-turn record: list of {"span_id": str, "parent_span_id": str|None,
         # "kind": "tool"|"skill_invocation", "tool_use_id": str}. Cleared at
-        # turn_end. Used by stop_handler to compute skill subtree token sums.
+        # turn_end. Lets post_handler retrieve the parent stamped at pre time.
         self.data.setdefault("turn_spans", [])
         # Token recorder state — incremental transcript parsing.
         self.data.setdefault("tokens_offset", 0)

@@ -20,18 +20,34 @@ import trace_writer  # noqa: E402
 
 PLUGIN_PREFIX = "alibabacloud"
 STDIN_CAP = 65536
+QODERWORK_MCP_WRAPPERS = ("qw_mcp_call", "qw_mcp_get")
 
 # Aliyun CLI invocation: matches `aliyun ...` at start of command OR
 # after a shell separator (`&&`, `||`, `;`, `|`, `\n`, `(`), with optional
-# `ENV=val` prefixes. Word-bounded (excludes `aliyun-cli`, `myaliyun`).
+# `ENV=val` prefixes and optional path prefix (e.g. `/usr/local/bin/aliyun`).
+# Word-bounded (excludes `aliyun-cli`, `myaliyun`, `cat /var/log/aliyun.log`).
 # Kept in sync with post_handler.ALIYUN_INVOCATION_RE.
 ALIYUN_INVOCATION_RE = re.compile(
     r"(?:^|[;&|\n(])"
     r"\s*"
     r"(?:[A-Z][A-Z0-9_]*=\S+\s+)*"
+    r"(?:[^\s;&|]*/)?"
     r"aliyun"
     r"(?=\s|$|[;&|])"
 )
+
+
+def normalize_tool_call(tool_name: str, tool_input):
+    """Unwrap QoderWork MCP wrapper payloads into the inner MCP tool shape."""
+    if tool_name not in QODERWORK_MCP_WRAPPERS or not isinstance(tool_input, dict):
+        return tool_name, tool_input
+    inner_name = tool_input.get("toolName") or tool_input.get("tool_name") or ""
+    if not isinstance(inner_name, str) or not inner_name:
+        return tool_name, tool_input
+    inner_input = tool_input.get("arguments")
+    if not isinstance(inner_input, dict):
+        inner_input = {}
+    return inner_name, inner_input
 
 
 def read_stdin_bounded() -> bytes:
@@ -135,6 +151,7 @@ def main() -> int:
         return 0
     tool_name = data.get("tool_name") or ""
     tool_input = data.get("tool_input") or {}
+    tool_name, tool_input = normalize_tool_call(tool_name, tool_input)
     session_id = data.get("session_id") or ""
     tool_use_id = data.get("tool_use_id") or ""
     if not is_ours_tool(tool_name, tool_input):
@@ -171,17 +188,12 @@ def main() -> int:
                 else:
                     if this_span_id:
                         pre_seen.append(this_span_id)
-                    # Last-Skill-Wins: prefer current skill, fall back to prompt
-                    parent_span = (
-                        st.data.get("current_skill_span_id")
-                        or st.data.get("prompt_span_id")
-                    )
-                    # Never let a span be its own parent (defensive guard
-                    # symmetric with post_handler).
-                    if parent_span == this_span_id:
-                        parent_span = st.data.get("prompt_span_id")
-                        if parent_span == this_span_id:
-                            parent_span = None
+                    # All tool spans parent directly to the prompt span.
+                    # Skill association is content-based — see post_handler
+                    # ._path_skill_tag (matches the bash command's UA env
+                    # or skills/<name>/ path) — never inferred from temporal
+                    # proximity within a turn.
+                    parent_span = st.data.get("prompt_span_id")
                     turn = int(st.data.get("turn", 0))
                     # Record this span for end-of-turn token aggregation
                     st.data.setdefault("turn_spans", []).append({

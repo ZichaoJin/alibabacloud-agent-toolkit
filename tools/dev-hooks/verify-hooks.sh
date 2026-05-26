@@ -28,6 +28,7 @@ fi
 required=(
     "hooks.json"
     "codex-hooks.json"
+    "qoderwork-hooks.json"
     "scripts/pre-tool-trace.sh"
     "scripts/post-tool-trace.sh"
     "scripts/prompt-trace.sh"

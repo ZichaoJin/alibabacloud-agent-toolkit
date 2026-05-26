@@ -245,6 +245,30 @@ def _parse_codex(
     }
 
 
+def _parse_qoderwork(
+    content: bytes,
+    start_call_index: int,
+    fallback_turn_id: str,
+    prev_state: dict,
+) -> tuple[list[dict], dict]:
+    """QoderWork transcript schema matches Claude's: each `type:"assistant"`
+    JSONL carries `message.usage` with `input_tokens`,
+    `cache_read_input_tokens`, `cache_creation_input_tokens`, `output_tokens`.
+
+    Delegate to `_parse_claude` and rewrite the client label. QoderWork
+    0.1.59-qw writes placeholder zeros for every assistant message; we
+    still emit the llm_call rows so the viewer shows call timing, count
+    and model — token chips just read 0 until QoderWork starts populating
+    real usage numbers (no code change needed then).
+    """
+    rows, new_state = _parse_claude(
+        content, start_call_index, fallback_turn_id, prev_state,
+    )
+    for row in rows:
+        row["client"] = "qoderwork"
+    return rows, new_state
+
+
 def _parse_unknown(
     content: bytes,
     start_call_index: int,
@@ -258,6 +282,7 @@ def _parse_unknown(
 PARSERS = {
     "claude-code": _parse_claude,
     "codex": _parse_codex,
+    "qoderwork": _parse_qoderwork,
 }
 
 

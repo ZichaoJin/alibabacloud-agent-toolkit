@@ -18,15 +18,44 @@
 > authoritative copy that all other plugins mirror.
 
 Anonymized usage telemetry shared by all `alibabacloud-*` plugins in this
-repository. Captures per-call hook events from agent clients (Claude Code in
-Phase 1; Codex / QoderWork / VS Code as Phase 2 stubs) and uploads them via
-`uvx alibabacloud.mcp-proxy@latest plugin-telemetry`.
+repository. Captures per-call hook events from agent clients (Claude Code,
+Codex CLI, QoderWork; VS Code / Copilot CLI remain Phase 2 stubs) and
+uploads them via `uvx alibabacloud.mcp-proxy@latest plugin-telemetry`.
 
-We subscribe to 6 Claude Code hook events: `PreToolUse`, `PostToolUse`,
-`PostToolUseFailure`, `Stop`, `StopFailure`, and `UserPromptSubmit`. The
-last one catches direct slash-style skill invocations (e.g. `/alibabacloud-
-core:foo args...`) which Claude Code submits as plain prompts rather than
-firing the `Skill` tool.
+Per-client event coverage:
+
+| Client      | Config file                | Events subscribed                                                                 |
+| ----------- | -------------------------- | --------------------------------------------------------------------------------- |
+| Claude Code | `hooks.json`               | `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`, `StopFailure`, `UserPromptSubmit` (6) |
+| Codex CLI   | `codex-hooks.json`         | `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop` (4)                       |
+| QoderWork   | `qoderwork-hooks.json`     | `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop` (4 — same as Codex)       |
+
+QoderWork and Codex share the same 4-event minimal set; this yields the
+same per-tool-call, per-prompt, per-turn granularity as Claude Code's
+6-event set (Claude's extra two events — `PostToolUseFailure` and
+`StopFailure` — are merged into the success-path scripts on QoderWork /
+Codex). `UserPromptSubmit` catches direct slash-style skill invocations
+(e.g. `/alibabacloud-core:foo args...`) that some clients submit as plain
+prompts instead of firing the `Skill` tool.
+
+## QoderWork install
+
+QoderWork does **not** inject environment variables into hook scripts and
+has only a user-scope settings file (no project scope). To register this
+plugin's hooks, run the installer once per machine after the plugin is
+installed:
+
+```bash
+bash plugins/alibabacloud-core/tools/qoderwork/enable-qoderwork-hooks.sh
+```
+
+It bakes the absolute plugin path into `~/.qoderwork/settings.json` (the
+`__PLUGIN_ROOT__` placeholder in `qoderwork-hooks.json` is substituted at
+install time), prefixes each command with `QODER_WORK=1` so the same hook
+scripts classify the client correctly, and is fully idempotent — re-running
+removes any prior `alibabacloud-core/*` entries before appending fresh
+ones, leaving user-defined and other-plugin hooks untouched. A timestamped
+backup is written next to the settings file on every run.
 
 ## Prerequisites
 
@@ -117,7 +146,7 @@ export ALIBABACLOUD_TELEMETRY=false
 | `ALIBABACLOUD_TELEMETRY_TRACE_PAYLOAD` | `0`                                                 | When `1`, dump raw stdin payloads to `<state-dir>/<client>/raw-payloads/<event>-<ts>-<pid>.json` for each hook fire. Use only for diagnosing extraction bugs — files contain the full hook payload (sensitive content possible) and can grow large. |
 | `COPILOT_CLI`                       | unset                                                  | Set to `1` to declare the Copilot CLI client (Phase 2 stub)                                                                     |
 | `CODEX_CLI`                         | unset                                                  | Set to `1` to declare the Codex client (Phase 2 stub)                                                                           |
-| `QODER_WORK`                        | unset                                                  | Set to `1` to declare the QoderWork client (Phase 2 stub)                                                                       |
+| `QODER_WORK`                        | unset                                                  | Set to `1` to declare the QoderWork client. The `enable-qoderwork-hooks.sh` installer prefixes each registered hook command with this var. |
 
 ## Architecture
 

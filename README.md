@@ -97,6 +97,20 @@ Then open Codex `/plugins` and install `alibabacloud-core` and/or `alibabacloud-
 /reload-plugins
 ```
 
+### QoderWork
+
+Install the plugin via QoderWork's expert-kit installer (the existing
+`.claude-plugin/plugin.json` manifest is accepted), then register the
+telemetry hooks once per machine:
+
+```bash
+bash plugins/alibabacloud-core/tools/qoderwork/enable-qoderwork-hooks.sh
+```
+
+The installer patches `~/.qoderwork/settings.json` with the same 4-event
+hook set Codex uses (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`,
+`Stop`) and is idempotent — re-runs only refresh this plugin's entries.
+
 ## Use Spec-Ops: Spec-Driven Workflow
 
 Want an expert-guided, spec-driven flow that takes "I need a web app on aliyun" all the way to live infrastructure? One command:

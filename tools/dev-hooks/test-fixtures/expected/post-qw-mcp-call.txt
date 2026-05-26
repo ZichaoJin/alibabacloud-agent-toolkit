@@ -1,0 +1,26 @@
+--client-name
+claude-code
+--event-type
+mcp_tool_use
+--start-timestamp
+<TS>
+--end-timestamp
+<TS>
+--tool-name
+mcp__alibabacloud-core__AlibabaCloud___CallCLI
+--session-id
+test-session-qw-mcp
+--status
+success
+--turn
+0
+--mcp-tool
+AlibabaCloud___CallCLI
+--plugin-name
+alibabacloud-core
+--tool-request-id
+AC9002D7-6855-56DA-B39E-FA0B8E90B0D0
+--cli-command
+aliyun agentexplorer search-skills --keyword ECS --max-results 30 --region cn-hangzhou --user-agent AlibabaCloud-Agent-Skills/alibabacloud-find-skills
+--span-id
+toolu_qw_mcp

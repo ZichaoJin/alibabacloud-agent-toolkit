@@ -185,15 +185,35 @@ def main() -> int:
                     n = row.get("normalized") or {}
                     turn_tokens = _add_tokens(turn_tokens, n)
                     tool_use_ids = list(row.get("tool_use_ids") or [])
+                    tool_span_ids = [
+                        tool_use_to_span.get(tu_id) or tu_id
+                        for tu_id in tool_use_ids
+                    ]
+                    call_ts = row.get("ts") or _iso_from_ms(stop_ts)
                     llm_calls.append({
                         "call_index": row.get("call_index"),
                         "model": row.get("model"),
-                        "ts": row.get("ts"),
+                        "ts": call_ts,
                         "tool_use_ids": tool_use_ids,
-                        "tool_span_ids": [
-                            tool_use_to_span.get(tu_id) or tu_id
-                            for tu_id in tool_use_ids
-                        ],
+                        "tool_span_ids": tool_span_ids,
+                        "llm_tokens": dict(n),
+                    })
+                    # First-class llm_call event in the timeline.
+                    # Sits at turn level (parent = prompt_span), siblings
+                    # with tool_call events, ordered by start_timestamp.
+                    # turn_end.llm_calls side-table is preserved above for
+                    # backward-compat with viewers that read it directly.
+                    trace_writer.append_trace(client, session_id, {
+                        "event": "llm_call",
+                        "span_id": _uuid.uuid4().hex[:16],
+                        "parent_span_id": prompt_span,
+                        "turn": current_turn,
+                        "start_timestamp": call_ts,
+                        "end_timestamp": call_ts,
+                        "call_index": row.get("call_index"),
+                        "model": row.get("model"),
+                        "tool_use_ids": tool_use_ids,
+                        "tool_span_ids": tool_span_ids,
                         "llm_tokens": dict(n),
                     })
 
@@ -238,7 +258,6 @@ def main() -> int:
                 st.data.pop("pending_prompt", None)
                 st.data.pop("pending_prompt_ts", None)
                 st.data.pop("prompt_span_id", None)
-                st.data["current_skill_span_id"] = None
                 st.data["turn_spans"] = []
                 # Clear post-tool-use dedup set — claude double-fires are
                 # always within the same turn, so this keeps memory bounded

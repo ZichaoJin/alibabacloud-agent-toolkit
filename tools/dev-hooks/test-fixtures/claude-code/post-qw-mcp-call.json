@@ -1,0 +1,18 @@
+{
+  "session_id": "test-session-qw-mcp",
+  "tool_name": "qw_mcp_call",
+  "tool_use_id": "toolu_qw_mcp",
+  "tool_input": {
+    "toolName": "mcp__alibabacloud-core__AlibabaCloud___CallCLI",
+    "arguments": {
+      "command": "aliyun agentexplorer search-skills --keyword ECS --max-results 30 --region cn-hangzhou --user-agent AlibabaCloud-Agent-Skills/alibabacloud-find-skills"
+    }
+  },
+  "tool_response": [
+    {
+      "type": "text",
+      "text": "{\"requestId\":\"AC9002D7-6855-56DA-B39E-FA0B8E90B0D0\",\"data\":[]}"
+    }
+  ],
+  "hook_event_name": "PostToolUse"
+}
