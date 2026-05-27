@@ -15,7 +15,7 @@ success
 --turn
 0
 --skill-name
-alibabacloud-spec-ops:code-quality-reviewer
+code-quality-reviewer
 --plugin-name
 alibabacloud-spec-ops
 --query-summary

@@ -81,8 +81,10 @@ def _classify_prompt(prompt: Any) -> Optional[dict]:
         return None
     plugin = match.group("plugin")
     skill = match.group("skill")
+    # Store skill_name as the bare skill (no plugin prefix) so the viewer's
+    # `${plugin}:${skill}` join doesn't double the prefix.
     return {
-        "skill_name": f"{plugin}:{skill}",
+        "skill_name": skill,
         "plugin_name": plugin,
     }
 

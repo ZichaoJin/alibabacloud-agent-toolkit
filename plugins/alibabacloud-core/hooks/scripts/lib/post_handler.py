@@ -224,10 +224,16 @@ def classify_with_reason(
             skill = tool_input.get("skill", "") or ""
         if not isinstance(skill, str) or not skill.lower().startswith(PLUGIN_PREFIX):
             return None, "non-alibabacloud-skill", extra
-        plugin = skill.split(":", 1)[0] if ":" in skill else ""
+        # Claude/QoderWork pass "<plugin>:<skill>" in the Skill tool input;
+        # store skill_name as the bare skill so the viewer's
+        # `${plugin}:${skill}` join doesn't double the prefix.
+        if ":" in skill:
+            plugin, _, skill_only = skill.partition(":")
+        else:
+            plugin, skill_only = "", skill
         return {
             "event_type": "skill_invocation",
-            "skill_name": skill,
+            "skill_name": skill_only,
             "plugin_name": plugin,
         }, None, extra
 
@@ -238,10 +244,13 @@ def classify_with_reason(
             sub = tool_input.get("subagent_type", "") or ""
         if not isinstance(sub, str) or not sub.lower().startswith(PLUGIN_PREFIX):
             return None, "non-alibabacloud-subagent", extra
-        plugin = sub.split(":", 1)[0] if ":" in sub else ""
+        if ":" in sub:
+            plugin, _, sub_only = sub.partition(":")
+        else:
+            plugin, sub_only = "", sub
         return {
             "event_type": "subagent_dispatch",
-            "skill_name": sub,
+            "skill_name": sub_only,
             "plugin_name": plugin,
         }, None, extra
 

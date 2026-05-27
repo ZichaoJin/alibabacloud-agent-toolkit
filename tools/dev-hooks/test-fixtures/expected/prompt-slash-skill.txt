@@ -7,7 +7,7 @@ skill_invocation
 --end-timestamp
 <TS>
 --tool-name
-skill_alibabacloud-core:alibabacloud-sdk-usage
+skill_alibabacloud-sdk-usage
 --session-id
 real-session-prompt
 --status
@@ -15,10 +15,10 @@ success
 --turn
 0
 --skill-name
-alibabacloud-core:alibabacloud-sdk-usage
+alibabacloud-sdk-usage
 --plugin-name
 alibabacloud-core
 --span-id
-skill_alibabacloud-core:alibabacloud-sdk-usage_0
+skill_alibabacloud-sdk-usage_0
 --parent-span-id
 <SPAN>
