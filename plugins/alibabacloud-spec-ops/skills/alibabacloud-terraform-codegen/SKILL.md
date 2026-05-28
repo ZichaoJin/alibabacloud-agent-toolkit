@@ -135,7 +135,8 @@ Three outcomes:
 
 **(b) Pattern lookup** (conditional) — if the user's requirement matches a
 product-specific idiom listed in `references/resource-patterns.md` (e.g.
-RDS cross-AZ HA, OSS lifecycle noncurrent, VPC peering), read the
+RDS cross-AZ HA, ALB server group sticky-session config, OSS lifecycle
+noncurrent, VPC peering), read the
 relevant section. These idioms are NOT in the provider doc's *Required*
 list but are what the user actually wants (e.g. `zone_id_slave_a` for RDS
 HA is optional per the doc but required for real cross-AZ placement).
@@ -196,7 +197,7 @@ grep '`alicloud_<resource>`' references/deprecated-fields.md
 ```
 
 If the user's requirement touches a product with a specific usage pattern
-(e.g. RDS cross-AZ HA, VPC peering, OSS lifecycle), also consult
+(e.g. RDS cross-AZ HA, ALB server group sticky-session config, VPC peering, OSS lifecycle), also consult
 `references/resource-patterns.md` for the non-obvious attributes.
 
 #### 5.2 Data-source enforcement (MANDATORY — no hardcoded IDs)
@@ -488,11 +489,16 @@ alibabacloud-planning
         → alibabacloud-executing-plans (plan/apply via IaC Service)
 ```
 
-After Step 7 emits the summary, simply stop. Whoever invoked this
-skill — the upstream `writing-plans` skill in the normal flow, or the
-user directly in standalone use — will see the Step 7 summary as the
-return value and decide the next action. The user's next interaction
-will be driven by that caller, not by this skill.
+After Step 7 emits the summary, do not ask the user any question.
+If this skill is running in the normal spec-ops workflow (invoked from
+`alibabacloud-writing-plans`, or writing into an `.aliyun-ai-ops-spec/*`
+project), immediately invoke `alibabacloud-spec-ops:alibabacloud-validate`
+yourself. Do not rely on the client returning control to the upstream
+skill; some clients end the turn after a nested skill finishes. Code
+generation is not a user gate.
+
+If this skill was invoked standalone outside a spec-ops project, end
+after the Step 7 summary and let the user decide what to do next.
 
 **Standalone use:** if the user invoked this skill directly and now
 asks how to actually deploy, name the deployment skill in plain

@@ -214,11 +214,12 @@ The `terraform-codegen` skill provides capabilities that inline generation canno
 >
 > Now running review (spec compliance + code quality)..."
 
-1. **Immediately and automatically invoke `alibabacloud-spec-ops:alibabacloud-validate`** — do NOT stop to ask the user. Validation is read-only (no cloud changes, no cost) and the next user-facing decision is whether to deploy, which `alibabacloud-validate` itself gates.
+1. **Immediately and automatically invoke `alibabacloud-spec-ops:alibabacloud-validate`** — do NOT stop to ask the user. After planning is confirmed, validation and execution both auto-chain; execution safety is handled by the executing-plans skill and any installed HITL hooks, not by an extra agent-chat prompt.
 
 **Do NOT:**
 
 - Ask "Would you like to proceed with validation?" — validation is not a decision the user needs to make
+- Stop after code generation and wait for the user to manually request review
 - Mention status.json updates
 - Mention internal file paths for state tracking
 - Mention the terraform-codegen delegation details (implementation detail)

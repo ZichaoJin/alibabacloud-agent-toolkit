@@ -518,7 +518,7 @@ When the user confirms:
 - ✅ Cost estimate with four-pillar assessment
 - ✅ Code generation via terraform-codegen (schema-verified)
 - ✅ Remote syntax validation (`validate-module` only)
-- ✅ Explicit user confirmation before terraform apply
+- ✅ Automatic execution handoff after validation; HITL hooks may still enforce out-of-band approval before apply
 
 #### Fast Track State Management
 
@@ -1085,7 +1085,7 @@ TodoWrite:
       status: pending
     - subject: "部署执行：terraform plan/apply via IaC Service"
       activeForm: "通过 IaC Service 远程执行 plan 与 apply"
-      description: "Invoke alibabacloud-executing-plans (requires explicit user confirmation before apply)"
+      description: "Invoke alibabacloud-executing-plans automatically after validation; HITL hooks may still enforce out-of-band approval"
       status: pending
 ```
 
@@ -1095,7 +1095,7 @@ TodoWrite:
 | --- | --- | --- |
 | 生成 Terraform 代码 | `alibabacloud-writing-plans` (start) | `alibabacloud-writing-plans` (after codegen succeeds) |
 | 双轨评审 | `alibabacloud-writing-plans` (immediately before auto-invoking validate) | `alibabacloud-validate` (after both reviewers PASS) |
-| 部署执行 | `alibabacloud-validate` (when user explicitly approves execution) | `alibabacloud-executing-plans` (after apply succeeds) |
+| 部署执行 | `alibabacloud-validate` (immediately after validation passes) | `alibabacloud-executing-plans` (after apply succeeds) |
 
 Each downstream skill `TodoWrite`-updates only its own task — never
 modifies tasks owned by others. This keeps the TODO list a faithful

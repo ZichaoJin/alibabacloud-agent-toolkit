@@ -46,7 +46,7 @@ Activate when:
 2. **Independent subagents** — In Full Mode, Stage 1 and Stage 2 MUST use the `Agent` tool in parallel
 3. **Fix before passing** — Do not set status to "validated" with unresolved issues
 4. **Record proof** — Write validation results to tasks/validation-report.md
-5. **No execution** — This skill validates only, never runs terraform apply
+5. **No direct execution** — This skill validates only, then automatically hands off to `alibabacloud-spec-ops:alibabacloud-executing-plans`; it never runs terraform apply itself
 
 ---
 
@@ -66,7 +66,8 @@ already been validated remotely by terraform-codegen Step 6, and the
 simplified design opts out of deeper review. The action sequence is:
 
 1. Silently update `tasks/status.json` to `status: "validated"`
-2. Inform user: "已通过快速校验，代码可以执行。要继续部署吗？"
+2. Update `TodoWrite`: mark **"部署执行：terraform plan/apply via IaC Service"** → `in_progress`
+3. Immediately invoke `alibabacloud-spec-ops:alibabacloud-executing-plans` — no user prompt needed
 
 No iacservice call is required here — the validation contract was satisfied
 in code generation.
@@ -171,8 +172,8 @@ Write to `.aliyun-ai-ops-spec/{name}/tasks/validation-report.md`:
 ## After Validation Passes
 
 1. Silently update `tasks/status.json` to `status: "validated"` — **do NOT mention this to the user**
-2. Update the user-facing TODO list via `TodoWrite`: mark **"双轨评审：spec compliance + code quality"** → `completed`. (Leave **"部署执行"** as `pending` — only the user can promote it to `in_progress` by confirming.)
-3. Inform user and ask for execution approval (this is the **execution gate** — keep it):
+2. Update the user-facing TODO list via `TodoWrite`: mark **"双轨评审：spec compliance + code quality"** → `completed`, and mark **"部署执行：terraform plan/apply via IaC Service"** → `in_progress`.
+3. Inform the user that validation passed and deployment execution is starting automatically:
 
 > "Validation complete — all checks passed.
 >
@@ -180,19 +181,14 @@ Write to `.aliyun-ai-ops-spec/{name}/tasks/validation-report.md`:
 > - Code quality: ✅
 > - Remote syntax: ✅ (validated upstream by terraform-codegen)
 >
-> **下一步：要现在进入部署吗？**
+> **下一步：自动进入部署执行。**
 >
-> 部署会通过 IaC Service 远程**自动**执行 `terraform plan` 与 `apply`——回复一次 \"部署\" 即授权整条链路完成，**真正在云上创建资源并产生费用**。我会把 plan 结果展示给你，但不会再停下来二次确认；如果 plan 出现非预期的破坏性变更（例如 Day-2 中要 destroy 资源），我会主动停下来询问。
->
-> 回复 **\"部署\"** / **\"yes\"** → 进入 `alibabacloud-spec-ops:alibabacloud-executing-plans`，自动完成 plan + apply。
-> 想再调整代码或暂停？直接告诉我，或随时打断我（Esc / 中止当前消息）。"
+> 已根据 planning 阶段的确认继续推进工作流，现在进入 `alibabacloud-spec-ops:alibabacloud-executing-plans`，通过 IaC Service 远程执行 `terraform plan` 与 `apply`。我会展示 plan 结果；如发现非预期的破坏性变更（例如 Day-2 中要 destroy 资源），我会主动停下来询问。
+> 如需中止，请立刻打断我（Esc / 中止当前消息）。"
 
-1. **Wait for explicit user approval.** This is the last user gate before money gets spent — never skip.
-2. **When the user confirms:**
-   - Update `TodoWrite`: mark **"部署执行：terraform plan/apply via IaC Service"** → `in_progress`
-   - Invoke `alibabacloud-spec-ops:alibabacloud-executing-plans`
+4. Immediately invoke `alibabacloud-spec-ops:alibabacloud-executing-plans` in the same workflow — do not wait for "部署" / "yes".
 
-**IMPORTANT:** Do NOT automatically invoke executing-plans without explicit user confirmation. The previous step in the workflow (writing-plans → validate) is read-only and auto-chains; this step is where the workflow stops to ask, by design.
+**IMPORTANT:** After planning is confirmed, the downstream workflow auto-chains through writing-plans → validate → executing-plans. Do NOT stop after validation to ask for "部署" / "yes".
 
 ---
 
@@ -216,4 +212,4 @@ Using independent subagents for review provides:
 - **No re-validation of syntax** — Trust the upstream `terraform-codegen` Step 6 result; do NOT re-call `iacservice validate-module`
 - **Fix and re-validate** — Don't pass with known issues
 - **Record everything** — Validation proof in tasks/
-- **Human gate** — User must explicitly choose to proceed to execution
+- **Auto handoff** — After validation passes, immediately invoke `alibabacloud-spec-ops:alibabacloud-executing-plans`; do not ask for an additional deploy confirmation

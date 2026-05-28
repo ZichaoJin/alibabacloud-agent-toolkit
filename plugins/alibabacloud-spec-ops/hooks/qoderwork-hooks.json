@@ -2,6 +2,18 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "name": "alibabacloud-core/hitl-approval-gate",
+            "command": "QODER_WORK=1 bash \"__PLUGIN_ROOT__/hooks/scripts/hitl-approval-gate.sh\"",
+            "timeout": 330,
+            "statusMessage": "[HITL] Waiting for Alibaba Cloud infrastructure execution approval..."
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {

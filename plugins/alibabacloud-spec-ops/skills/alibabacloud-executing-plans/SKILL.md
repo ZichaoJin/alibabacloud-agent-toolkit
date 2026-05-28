@@ -1,6 +1,6 @@
 ---
 name: alibabacloud-executing-plans
-description: "Execute validated Terraform plans via Alibaba Cloud IaC Service. Requires explicit user confirmation before any apply operation. WHEN: execute terraform, apply infrastructure, run terraform apply, deploy infrastructure, create cloud resources, execute plan."
+description: "Execute validated Terraform plans via Alibaba Cloud IaC Service. Use after planning and validation have completed, or when the user explicitly asks to execute/apply infrastructure. WHEN: execute terraform, apply infrastructure, run terraform apply, deploy infrastructure, create cloud resources, execute plan."
 license: MIT
 metadata:
   author: Alibaba Cloud
@@ -12,7 +12,7 @@ metadata:
 > **AUTHORITATIVE GUIDANCE — MANDATORY COMPLIANCE**
 >
 > This skill executes validated Terraform code via Alibaba Cloud IaC Service (remote execution).
-> It creates **real cloud resources** that cost money. Safety gates are non-negotiable.
+> It creates **real cloud resources** that cost money. The in-chat planning confirmation plus the HITL hook approval are the safety gates.
 >
 > **ALL CLI operations MUST use MCP tool `AlibabaCloud___CallCLI`** — never use Bash to run `aliyun` commands directly.
 
@@ -23,12 +23,12 @@ metadata:
 > Before proceeding, verify BOTH prerequisites:
 >
 > 1. **Validation passed** — check `tasks/status.json` has `status: "validated"` (internal check, don't expose to user)
-> 2. **User explicitly confirmed** they want to execute
+> 2. **Workflow authorization exists** — planning was confirmed and this skill was invoked by the validated spec-ops chain, or the user directly asked to execute/apply
 >
 > If EITHER is missing, **STOP IMMEDIATELY**:
 >
 > - Not validated? → Invoke **alibabacloud:validate** first
-> - No user confirmation? → Ask user before proceeding
+> - No workflow authorization? → Return to planning/validation; do not ask a second deployment confirmation here
 
 ---
 
@@ -36,14 +36,14 @@ metadata:
 
 Activate when:
 
+- The validated spec-ops workflow invokes this skill after planning was confirmed
 - User explicitly asks to execute/apply the Terraform plan
-- User confirms they want to proceed after validation passes
 
-**NEVER activate automatically.** This skill requires explicit user intent.
+**Normal spec-ops workflow activation is automatic after validation.** Do not ask the user "确认部署/yes" again inside this skill. If configured, the PreToolUse HITL hook is the execution approval gate before this skill runs.
 
 ## Rules
 
-1. **Single deploy approval, granted upstream** — The user authorizes deployment ONCE in `alibabacloud-validate`'s gate. Inside this skill the entire `plan → apply` chain runs automatically. Never add a second confirmation between plan and apply.
+1. **Single deploy approval, enforced by HITL** — After planning is confirmed and validation passes, execution proceeds automatically. The HITL hook may block this skill until the external approval is granted. Inside this skill the entire `plan → apply` chain runs automatically. Never add an in-chat "确认部署/yes" question before plan or between plan and apply.
 2. **Plan before apply, results always shown** — Always run terraform plan first AND surface its output to the user before apply. The user can interrupt mid-stream if the plan reveals something unexpected, but the default flow does not stop to ask.
 3. **MCP only** — ALL `aliyun` CLI commands MUST go through `AlibabaCloud___CallCLI`, never through Bash
 4. **Inline content** — Read .tf files locally, then pass content as string to `--code` (MCP cannot access local files)
@@ -120,15 +120,15 @@ Never silently start fresh — the user paid for those resources.
    - If `status == "executed"` but `state.state_id` is missing, see the
      legacy edge case in [State Persistence](#state-persistence-critical-for-day-2) before proceeding
 2. Read `tasks/validation-report.md` — must show all reviews PASS
-3. Confirm user intent one more time, and surface whether this is Day-1 or Day-2:
+3. Do NOT ask for another deployment confirmation. Surface whether this is
+   Day-1 or Day-2 as a status update, then continue to Step 2:
 
-> "Ready to execute Terraform.
+> "开始执行 Terraform。
 >
-> {Day-1: This will create real cloud resources on Alibaba Cloud and incur costs.}
-> {Day-2: This will update the existing deployment (state `{STATE_ID}`); changes
-> shown in the next plan output will be applied to the live resources.}
+> {Day-1: 这会在阿里云上创建真实资源并产生费用。}
+> {Day-2: 这会更新已有部署（state `{STATE_ID}`）；下一步 plan 中展示的变更会应用到线上资源。}
 >
-> Proceed with `terraform plan`?"
+> 现在先执行 `terraform plan`。"
 
 ### Step 2: Prepare Template Content
 
@@ -186,9 +186,9 @@ the user, silently update `tasks/status.json`:
 }
 ```
 
-Rationale: if the user aborts at the Step 4 confirmation, the next
-invocation must still be able to continue on this state. **Never poll or
-proceed before this write completes.**
+Rationale: if the user interrupts after seeing the Step 4 plan output, the
+next invocation must still be able to continue on this state. **Never poll
+or proceed before this write completes.**
 
 **Poll for completion** (see Polling Strategy below):
 
@@ -200,9 +200,9 @@ AlibabaCloud___CallCLI:
 ### Step 4: Present Plan Results (no second confirmation)
 
 Show the plan output to user, then **proceed directly to Step 5** —
-do NOT stop to ask "Confirm apply?". The user already authorized
-deployment at the validate-stage gate; a second confirmation here is
-friction that this skill explicitly removes.
+do NOT stop to ask "Confirm apply?". The planning confirmation plus HITL
+approval already covered execution authorization; a second in-chat
+confirmation here is friction that this skill explicitly removes.
 
 Write plan results to `tasks/tf-plan-result.md`.
 
@@ -600,7 +600,7 @@ user later wants to redeploy fresh (new state), planning will detect
 ## Safety Principles
 
 - **Never skip plan** — Always plan before apply, and always show plan output to the user
-- **Auto-apply is the default flow** — The deploy authorization is granted ONCE at the validate-stage gate; do NOT add a second confirmation between plan and apply. The user can still interrupt mid-stream; the safety override in Step 4 covers unexpected destructive changes.
+- **Auto-apply is the default flow** — The deploy authorization is covered by planning confirmation plus HITL approval; do NOT add a second confirmation before plan or between plan and apply. The user can still interrupt mid-stream; the safety override in Step 4 covers unexpected destructive changes.
 - **Never silent destroy** — Destroy (Rule 8) requires explicit naming confirmation; this is independent of the plan→apply auto-flow
 - **Always use MCP** — Never run aliyun CLI via Bash; always via `AlibabaCloud___CallCLI`
 - **Always inline content** — Read files first, pass content as string to MCP

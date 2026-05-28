@@ -2,6 +2,17 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/hitl-approval-gate.sh",
+            "timeout": 330,
+            "statusMessage": "[HITL] Waiting for Alibaba Cloud infrastructure execution approval..."
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {

@@ -131,6 +131,61 @@ public / CDN / CORS / website / 版本控制".
 
 ---
 
+## ALB server group — explicit sticky session config
+
+**Trigger phrases**: any `alicloud_alb_server_group`, or requirements using
+"ALB / 应用型负载均衡 / HTTP listener / server group / 后端服务器组" with ECS
+or other backends.
+
+**Non-obvious requirement**: recent alicloud provider versions may reject
+`alicloud_alb_server_group` during apply when `sticky_session_config` is
+omitted, even if the plan/schema path allowed the block to be absent. This
+commonly fails late with a provider error after most resources have already
+been created.
+
+**Required attributes / blocks on `alicloud_alb_server_group`**:
+
+| Attribute / block | Value | Why |
+| --- | --- | --- |
+| `sticky_session_config` | include explicitly | Avoid provider apply-time failure when the block is treated as required. |
+| `sticky_session_config.sticky_session_enabled` | `false` unless user asks for session affinity | Safe default for stateless HTTP workloads. |
+| `health_check_config` | include explicitly | ALB needs deterministic backend health behavior. |
+
+**Sketch**:
+
+```hcl
+resource "alicloud_alb_server_group" "app" {
+  server_group_name = "${var.project_name}-sg"
+  server_group_type = "Instance"
+  vpc_id            = alicloud_vpc.this.id
+  protocol          = "HTTP"
+
+  health_check_config {
+    health_check_enabled = true
+    health_check_protocol = "HTTP"
+    health_check_path     = "/"
+    health_check_codes    = ["http_2xx", "http_3xx"]
+  }
+
+  sticky_session_config {
+    sticky_session_enabled = false
+  }
+
+  servers {
+    server_id   = alicloud_instance.app_a.id
+    server_type = "Ecs"
+    port        = 8080
+    weight      = 100
+  }
+}
+```
+
+If the user explicitly asks for session affinity / sticky sessions, set
+`sticky_session_enabled = true` and add the provider-supported cookie fields
+from the live provider doc recitation.
+
+---
+
 ## FCv3 function — mandatory RAM role + service access policy
 
 **Trigger phrases**: any `alicloud_fcv3_function` (or its deprecated name
