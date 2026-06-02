@@ -38,6 +38,9 @@ _EMIT_ORDER = [
     "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
     "cli-command", "query-summary", "error-message",
     "span-id", "parent-span-id",
+    "skill-tag",
+    "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+    "output-tokens", "reasoning-tokens",
 ]
 
 

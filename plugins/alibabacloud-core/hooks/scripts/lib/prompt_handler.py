@@ -38,6 +38,9 @@ _EMIT_ORDER = [
     "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
     "cli-command", "query-summary", "error-message",
     "span-id", "parent-span-id",
+    "skill-tag",
+    "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+    "output-tokens", "reasoning-tokens",
 ]
 
 
@@ -56,7 +59,10 @@ def _detect_client(payload_str: str) -> str:
 
 
 def _iso_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    now_ms = int(time.time() * 1000)
+    t = time.gmtime(now_ms / 1000.0)
+    millis = int(now_ms % 1000)
+    return time.strftime("%Y-%m-%dT%H:%M:%S", t) + f".{millis:03d}Z"
 
 
 def _emit(args: dict) -> None:

@@ -48,11 +48,14 @@ def detect_client(payload_str: str) -> str:
 
 
 def iso_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    now_ms = int(time.time() * 1000)
+    return iso_from_ms(now_ms)
 
 
 def iso_from_ms(ms: int) -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ms / 1000.0))
+    t = time.gmtime(ms / 1000.0)
+    millis = int(ms % 1000)
+    return time.strftime("%Y-%m-%dT%H:%M:%S", t) + f".{millis:03d}Z"
 
 
 def _sanitize_tool_name(tool_name: str) -> str:
@@ -365,6 +368,9 @@ def emit(args: dict) -> None:
         "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
         "cli-command", "query-summary", "error-message",
         "span-id", "parent-span-id",
+        "skill-tag",
+        "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+        "output-tokens", "reasoning-tokens",
     ]
     for key in order:
         v = args.get(key)
@@ -773,6 +779,10 @@ def main() -> int:
             tool_response.get("error"),
             tool_response.get("stderr"),
         ])
+    elif isinstance(tool_response, str) and tool_response:
+        # QoderWork qw_mcp_call: tool_response is a plain JSON string
+        # containing the API response (with requestId etc.).
+        _rid_sources.append(tool_response)
     _rid_sources.extend([data.get("tool_error"), data.get("error")])
     # Last resort: walk the whole tool_response (dict) for any RequestId /
     # PopRequestId under arbitrary nesting. List-shaped tool_response was
@@ -813,9 +823,26 @@ def main() -> int:
         "error-message": error_message,
         "span-id": tool_use_id or marker_key,
         "parent-span-id": parent_span_id,
+        "skill-tag": _path_skill_tag(tool_input) or "",
     }
     if fallback_used and not args.get("query-summary"):
         args["query-summary"] = "start-fallback"
+    # TEMP DEBUG: dump args dict before emit so we can verify ms preservation
+    try:
+        import json as _json
+        with open("/tmp/aliyun-debug-args.log", "a") as _f:
+            _f.write(_json.dumps({
+                "stage": "post_handler.emit",
+                "session": session_id,
+                "event": args.get("event-type"),
+                "tool": args.get("tool-name"),
+                "start": args.get("start-timestamp"),
+                "end": args.get("end-timestamp"),
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+            }) + "\n")
+    except Exception:
+        pass
     emit(args)
 
     # --- Local trace: write tool_end event with full response ---
@@ -870,7 +897,7 @@ def main() -> int:
                     "end_timestamp": end_ms,
                 })
             else:
-                trace_response = tool_response if isinstance(tool_response, (dict, list)) else tool_result
+                trace_response = tool_response if tool_response else tool_result
                 response_data, was_truncated = trace_writer.truncate_response(trace_response)
                 trace_writer.append_trace(client, session_id, {
                     "event": "tool_end",

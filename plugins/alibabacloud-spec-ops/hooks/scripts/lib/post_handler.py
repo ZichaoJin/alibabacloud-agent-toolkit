@@ -365,6 +365,9 @@ def emit(args: dict) -> None:
         "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
         "cli-command", "query-summary", "error-message",
         "span-id", "parent-span-id",
+        "skill-tag",
+        "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+        "output-tokens", "reasoning-tokens",
     ]
     for key in order:
         v = args.get(key)
@@ -813,6 +816,7 @@ def main() -> int:
         "error-message": error_message,
         "span-id": tool_use_id or marker_key,
         "parent-span-id": parent_span_id,
+        "skill-tag": _path_skill_tag(tool_input) or "",
     }
     if fallback_used and not args.get("query-summary"):
         args["query-summary"] = "start-fallback"

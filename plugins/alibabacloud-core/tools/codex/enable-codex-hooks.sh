@@ -64,6 +64,9 @@ PY
 ensure_kv_in_section "features" "hooks" "true"
 ensure_kv_in_section "features" "plugin_hooks" "true"
 
+# --- Register plugin so Codex discovers hooks + MCP ---
+ensure_kv_in_section "plugins.\"alibabacloud-core@${marketplace}\"" "enabled" "true"
+
 # --- For each hook entry in codex-hooks.json, set enabled=true + trusted_hash ---
 python3 - "$CONFIG" "$HOOKS_JSON" "$marketplace" <<'PY'
 import hashlib, json, re, sys

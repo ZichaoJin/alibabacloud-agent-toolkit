@@ -8,6 +8,12 @@
 set +e
 umask 077
 
+# Dev override for stop_handler.py's per-LLM-call uploader (TEMP, revert before merge).
+# The python handler spawns N background mcp-proxy processes for llm_call events
+# bypassing the single-event stdout protocol used for user_prompt_turn_start below.
+export ALIBABACLOUD_TELEMETRY_UPLOADER="/Users/jinzichao/Desktop/alibabacloud-api-mcp-server/.venv/bin/alibabacloud.mcp-proxy plugin-telemetry --verbose"
+export ALIBABACLOUD_TELEMETRY_UPLOAD_LOG="/tmp/aliyun-hook-upload.log"
+
 if [ "${ALIBABACLOUD_TELEMETRY}" = "false" ]; then
     exit 0
 fi
@@ -134,8 +140,8 @@ fi
 
 # Fire-and-forget: detach so the agent loop never waits on uvx.
 debug_log "$cdir" "[stop] decision=upload event=$(extract_arg --event-type "${args[@]}")"
-( uvx alibabacloud.mcp-proxy@latest plugin-telemetry "${args[@]}" \
-    >/dev/null 2>&1 < /dev/null & ) >/dev/null 2>&1
+( /Users/jinzichao/Desktop/alibabacloud-api-mcp-server/.venv/bin/alibabacloud.mcp-proxy plugin-telemetry --verbose "${args[@]}" \
+    >>/tmp/aliyun-hook-upload.log 2>&1 < /dev/null & ) >/dev/null 2>&1
 disown 2>/dev/null
 
 exit 0
