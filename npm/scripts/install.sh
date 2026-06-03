@@ -5,7 +5,8 @@ set -euo pipefail
 
 REPO_URL="https://github.com/acloudlabs-unofficial/alibabacloud-agent-toolkit.git"
 MARKETPLACE_NAME="alibabacloud-agent-toolkit"
-PLUGIN_NAME="alibabacloud-core"
+PLUGIN_CORE="alibabacloud-core"
+PLUGIN_SPECOPS="alibabacloud-spec-ops"
 MCP_SERVER_CMD="uvx"
 MCP_SERVER_ARGS='["alibabacloud.mcp-proxy@latest"]'
 
@@ -73,10 +74,11 @@ TMPDIR_CREATED=""
 get_plugin_source() {
     # If running from within the cloned repo (dev mode), use it directly
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    LOCAL_PLUGINS="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)/plugins/${PLUGIN_NAME}"
-    if [[ -d "$LOCAL_PLUGINS/.claude-plugin" ]]; then
-        PLUGIN_SRC="$LOCAL_PLUGINS"
-        info "Using local plugin source: ${PLUGIN_SRC}"
+    LOCAL_REPO="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)"
+    if [[ -d "$LOCAL_REPO/plugins/${PLUGIN_CORE}/.claude-plugin" ]]; then
+        PLUGIN_SRC_CORE="$LOCAL_REPO/plugins/${PLUGIN_CORE}"
+        PLUGIN_SRC_SPECOPS="$LOCAL_REPO/plugins/${PLUGIN_SPECOPS}"
+        info "Using local plugin source: ${LOCAL_REPO}/plugins/"
         return
     fi
 
@@ -84,9 +86,10 @@ get_plugin_source() {
     info "Downloading plugin from ${REPO_URL} ..."
     TMPDIR_CREATED="$(mktemp -d)"
     git clone --depth 1 --quiet "$REPO_URL" "$TMPDIR_CREATED/repo"
-    PLUGIN_SRC="$TMPDIR_CREATED/repo/plugins/${PLUGIN_NAME}"
-    if [[ ! -d "$PLUGIN_SRC/.claude-plugin" ]]; then
-        err "Plugin not found in cloned repo at plugins/${PLUGIN_NAME}"
+    PLUGIN_SRC_CORE="$TMPDIR_CREATED/repo/plugins/${PLUGIN_CORE}"
+    PLUGIN_SRC_SPECOPS="$TMPDIR_CREATED/repo/plugins/${PLUGIN_SPECOPS}"
+    if [[ ! -d "$PLUGIN_SRC_CORE/.claude-plugin" ]]; then
+        err "Plugin not found in cloned repo at plugins/${PLUGIN_CORE}"
         exit 1
     fi
     ok "Downloaded to ${TMPDIR_CREATED}/repo"
@@ -100,8 +103,11 @@ cleanup_tmp() {
 trap cleanup_tmp EXIT
 
 # Read version from plugin.json
-get_version() {
-    python3 -c "import json; print(json.load(open('$PLUGIN_SRC/.claude-plugin/plugin.json'))['version'])" 2>/dev/null || echo "1.0.0"
+get_version_core() {
+    python3 -c "import json; print(json.load(open('$PLUGIN_SRC_CORE/.claude-plugin/plugin.json'))['version'])" 2>/dev/null || echo "1.0.0"
+}
+get_version_specops() {
+    python3 -c "import json; print(json.load(open('$PLUGIN_SRC_SPECOPS/.claude-plugin/plugin.json'))['version'])" 2>/dev/null || echo "0.1.0"
 }
 
 # ─────────────────────────────────────────────────────────────────────
@@ -115,85 +121,216 @@ install_claude() {
         return
     fi
 
-    local version
-    version="$(get_version)"
-    local dest="${HOME}/.claude/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_NAME}/${version}"
-
-    mkdir -p "$dest"
-    info "Copying plugin to ${dest} ..."
-    rsync -a --delete \
-        --exclude '__pycache__' \
-        --exclude '.DS_Store' \
-        "$PLUGIN_SRC/" "$dest/"
-    ok "Plugin files copied (v${version})"
-
-    # Register marketplace + plugin so Claude Code discovers hooks and MCP
+    # Register marketplace (shared by both plugins)
     info "Registering marketplace..."
     claude plugin marketplace add "$REPO_URL" 2>/dev/null || true
 
-    info "Registering plugin..."
-    claude plugin install "${PLUGIN_NAME}@${MARKETPLACE_NAME}" 2>/dev/null || true
+    # --- Install core ---
+    local version_core
+    version_core="$(get_version_core)"
+    local dest_core="${HOME}/.claude/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_CORE}/${version_core}"
 
-    # Overwrite again — claude plugin install may have replaced our files with GitHub main
+    mkdir -p "$dest_core"
+    info "Copying ${PLUGIN_CORE} to ${dest_core} ..."
     rsync -a --delete \
         --exclude '__pycache__' \
         --exclude '.DS_Store' \
-        "$PLUGIN_SRC/" "$dest/"
+        "$PLUGIN_SRC_CORE/" "$dest_core/"
 
-    ok "Claude Code: installed (v${version}). Hooks + MCP configured automatically."
+    info "Registering ${PLUGIN_CORE}..."
+    claude plugin install "${PLUGIN_CORE}@${MARKETPLACE_NAME}" 2>/dev/null || true
+
+    rsync -a --delete \
+        --exclude '__pycache__' \
+        --exclude '.DS_Store' \
+        "$PLUGIN_SRC_CORE/" "$dest_core/"
+    ok "${PLUGIN_CORE} installed (v${version_core})"
+
+    # --- Install spec-ops ---
+    if [[ -d "$PLUGIN_SRC_SPECOPS/.claude-plugin" ]]; then
+        local version_specops
+        version_specops="$(get_version_specops)"
+        local dest_specops="${HOME}/.claude/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_SPECOPS}/${version_specops}"
+
+        mkdir -p "$dest_specops"
+        info "Copying ${PLUGIN_SPECOPS} to ${dest_specops} ..."
+        rsync -a --delete \
+            --exclude '__pycache__' \
+            --exclude '.DS_Store' \
+            "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
+
+        info "Registering ${PLUGIN_SPECOPS}..."
+        claude plugin install "${PLUGIN_SPECOPS}@${MARKETPLACE_NAME}" 2>/dev/null || true
+
+        rsync -a --delete \
+            --exclude '__pycache__' \
+            --exclude '.DS_Store' \
+            "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
+        ok "${PLUGIN_SPECOPS} installed (v${version_specops})"
+    fi
+
+    ok "Claude Code: done. Hooks + MCP configured automatically."
     info "Run 'claude /reload-plugins' or restart Claude Code to activate."
 }
 
 install_codex() {
     banner "Codex CLI"
 
-    local version
-    version="$(get_version)"
-    local dest="${HOME}/.codex/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_NAME}/${version}"
+    # --- Install core ---
+    local version_core
+    version_core="$(get_version_core)"
+    local dest_core="${HOME}/.codex/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_CORE}/${version_core}"
 
-    mkdir -p "$dest"
-    info "Copying plugin to ${dest} ..."
+    mkdir -p "$dest_core"
+    info "Copying ${PLUGIN_CORE} to ${dest_core} ..."
     rsync -a --delete \
         --exclude '__pycache__' \
         --exclude '.DS_Store' \
-        "$PLUGIN_SRC/" "$dest/"
-    ok "Plugin files copied (v${version})"
+        "$PLUGIN_SRC_CORE/" "$dest_core/"
+    ok "${PLUGIN_CORE} files copied (v${version_core})"
 
-    # Enable hooks using the existing script
-    local hook_script="$dest/tools/codex/enable-codex-hooks.sh"
+    local hook_script="$dest_core/tools/codex/enable-codex-hooks.sh"
     if [[ -f "$hook_script" ]]; then
-        info "Enabling hooks..."
+        info "Enabling ${PLUGIN_CORE} hooks..."
         bash "$hook_script"
     else
         warn "Hook enablement script not found at ${hook_script}"
+    fi
+
+    # --- Install spec-ops ---
+    if [[ -d "$PLUGIN_SRC_SPECOPS/.claude-plugin" ]]; then
+        local version_specops
+        version_specops="$(get_version_specops)"
+        local dest_specops="${HOME}/.codex/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_SPECOPS}/${version_specops}"
+
+        mkdir -p "$dest_specops"
+        info "Copying ${PLUGIN_SPECOPS} to ${dest_specops} ..."
+        rsync -a --delete \
+            --exclude '__pycache__' \
+            --exclude '.DS_Store' \
+            "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
+        ok "${PLUGIN_SPECOPS} files copied (v${version_specops})"
+
+        # spec-ops uses same enable script structure
+        local hook_script_specops="$dest_specops/tools/codex/enable-codex-hooks.sh"
+        if [[ -f "$hook_script_specops" ]]; then
+            info "Enabling ${PLUGIN_SPECOPS} hooks..."
+            bash "$hook_script_specops"
+        else
+            # Fallback: register plugin + trust hashes inline
+            info "Registering ${PLUGIN_SPECOPS} in Codex config..."
+            _codex_register_plugin "$dest_specops" "$PLUGIN_SPECOPS"
+        fi
     fi
 
     ok "Codex: installed. Restart Codex CLI to activate."
 }
 
+# Helper: register a spec-ops plugin in Codex config.toml (when no enable script exists)
+_codex_register_plugin() {
+    local plugin_dir="$1" plugin_name="$2"
+    local config="${HOME}/.codex/config.toml"
+    local hooks_json="$plugin_dir/hooks/codex-hooks.json"
+
+    [[ -f "$hooks_json" ]] || return 0
+
+    python3 - "$config" "$hooks_json" "$MARKETPLACE_NAME" "$plugin_name" <<'PY'
+import hashlib, json, re, sys
+config_path, hooks_path, marketplace, plugin_name = sys.argv[1:]
+
+text = open(config_path).read() if __import__('os').path.isfile(config_path) else ""
+
+# Ensure plugin registration
+def upsert_section(text, header, kv_pairs):
+    pat = re.compile(rf'(\[{re.escape(header)}\][ \t]*\n)(.*?)(?=\n\[|\Z)', re.S)
+    m = pat.search(text)
+    if m:
+        body = m.group(2)
+        for k, _ in kv_pairs:
+            body = re.sub(rf'(?m)^{re.escape(k)}\s*=.*\n?', '', body)
+        body = body.rstrip()
+        addition = "".join(f"{k} = {v}\n" for k, v in kv_pairs)
+        new_body = (body + "\n" if body else "") + addition
+        return text[:m.start(2)] + new_body + text[m.end(2):]
+    sep = "" if text.endswith("\n") or text == "" else "\n"
+    body = "".join(f"{k} = {v}\n" for k, v in kv_pairs)
+    return text + f"{sep}[{header}]\n{body}"
+
+# Register plugin
+section = f'plugins."{plugin_name}@{marketplace}"'
+text = upsert_section(text, section, [("enabled", "true")])
+
+# Trust hashes for hooks
+EVENT_MAP = {
+    "PreToolUse": "pre_tool_use", "PostToolUse": "post_tool_use",
+    "UserPromptSubmit": "user_prompt_submit", "Stop": "stop",
+}
+hooks = json.load(open(hooks_path))
+for evt_name, groups in hooks.get("hooks", {}).items():
+    snake = EVENT_MAP.get(evt_name, evt_name.lower())
+    for i, group in enumerate(groups or []):
+        for j, h in enumerate(group.get("hooks") or []):
+            cmd = h.get("command", "")
+            if not cmd:
+                continue
+            digest = "sha256:" + hashlib.sha256(cmd.encode("utf-8")).hexdigest()
+            sec = f'hooks.state."{marketplace}:hooks/codex-hooks.json:{snake}:{i}:{j}"'
+            text = upsert_section(text, sec, [
+                ("enabled", "true"),
+                ("trusted_hash", f'"{digest}"'),
+            ])
+
+open(config_path, "w").write(text)
+print(f"Registered {plugin_name} in {config_path}")
+PY
+}
+
 install_qoderwork() {
     banner "QoderWork"
 
-    local dest="${HOME}/.qoderwork/plugins-custom/${PLUGIN_NAME}"
+    # --- Install core ---
+    local dest_core="${HOME}/.qoderwork/plugins-custom/${PLUGIN_CORE}"
 
-    mkdir -p "$dest"
-    info "Copying plugin to ${dest} ..."
+    mkdir -p "$dest_core"
+    info "Copying ${PLUGIN_CORE} to ${dest_core} ..."
     rsync -a --delete \
         --exclude '__pycache__' \
         --exclude '.DS_Store' \
-        "$PLUGIN_SRC/" "$dest/"
-    ok "Plugin files copied"
+        "$PLUGIN_SRC_CORE/" "$dest_core/"
+    ok "${PLUGIN_CORE} files copied"
 
-    # Enable hooks using the existing script
-    local hook_script="$dest/tools/qoderwork/enable-qoderwork-hooks.sh"
+    local hook_script="$dest_core/tools/qoderwork/enable-qoderwork-hooks.sh"
     if [[ -f "$hook_script" ]]; then
-        info "Enabling hooks..."
+        info "Enabling ${PLUGIN_CORE} hooks..."
         bash "$hook_script"
     else
         warn "Hook enablement script not found at ${hook_script}"
     fi
 
-    # Configure MCP server in ~/.qoderwork/mcp.json
+    # --- Install spec-ops ---
+    if [[ -d "$PLUGIN_SRC_SPECOPS/.claude-plugin" ]]; then
+        local dest_specops="${HOME}/.qoderwork/plugins-custom/${PLUGIN_SPECOPS}"
+
+        mkdir -p "$dest_specops"
+        info "Copying ${PLUGIN_SPECOPS} to ${dest_specops} ..."
+        rsync -a --delete \
+            --exclude '__pycache__' \
+            --exclude '.DS_Store' \
+            "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
+        ok "${PLUGIN_SPECOPS} files copied"
+
+        local hook_script_specops="$dest_specops/tools/qoderwork/enable-qoderwork-hooks.sh"
+        if [[ -f "$hook_script_specops" ]]; then
+            info "Enabling ${PLUGIN_SPECOPS} hooks..."
+            bash "$hook_script_specops"
+        else
+            # Fallback: merge hooks from spec-ops qoderwork-hooks.json
+            info "Registering ${PLUGIN_SPECOPS} hooks..."
+            _qoderwork_register_hooks "$dest_specops" "$PLUGIN_SPECOPS"
+        fi
+    fi
+
+    # Configure MCP server in ~/.qoderwork/mcp.json (shared by both plugins)
     local mcp_config="${HOME}/.qoderwork/mcp.json"
     info "Configuring MCP server..."
     python3 - "$mcp_config" "$MCP_SERVER_CMD" "$MCP_SERVER_ARGS" <<'PYEOF'
@@ -223,6 +360,66 @@ PYEOF
     ok "QoderWork: installed. Restart QoderWork to activate."
 }
 
+# Helper: register spec-ops hooks into QoderWork settings.json (when no enable script exists)
+_qoderwork_register_hooks() {
+    local plugin_dir="$1" plugin_name="$2"
+    local settings="${HOME}/.qoderwork/settings.json"
+    local hooks_json="$plugin_dir/hooks/qoderwork-hooks.json"
+
+    [[ -f "$hooks_json" ]] || return 0
+
+    python3 - "$settings" "$hooks_json" "$plugin_dir" "$plugin_name" <<'PY'
+import json, sys, os
+
+settings_path, hooks_path, plugin_dir, plugin_name = sys.argv[1:]
+
+# Read current settings
+if os.path.isfile(settings_path):
+    with open(settings_path) as f:
+        settings = json.load(f)
+else:
+    settings = {}
+
+settings.setdefault("hooks", {})
+
+# Read hooks definition
+with open(hooks_path) as f:
+    hooks_def = json.load(f)
+
+prefix = f"{plugin_name}/"
+
+# For each event, merge hooks (deduplicated by name prefix)
+for event, groups in hooks_def.get("hooks", {}).items():
+    existing = settings["hooks"].get(event, [])
+    # Remove old entries with same prefix
+    pruned = []
+    for grp in existing:
+        if not isinstance(grp, dict):
+            pruned.append(grp)
+            continue
+        inner = grp.get("hooks") or []
+        kept = [h for h in inner
+                if not (isinstance(h, dict) and isinstance(h.get("name"), str)
+                        and h["name"].startswith(prefix))]
+        if kept:
+            new_grp = dict(grp)
+            new_grp["hooks"] = kept
+            pruned.append(new_grp)
+
+    # Replace __PLUGIN_ROOT__ with actual path and add new hooks
+    for grp in (groups or []):
+        new_grp = json.loads(json.dumps(grp).replace("__PLUGIN_ROOT__", plugin_dir))
+        pruned.append(new_grp)
+
+    settings["hooks"][event] = pruned
+
+with open(settings_path, "w") as f:
+    json.dump(settings, f, indent=2)
+    f.write("\n")
+print(f"Registered {plugin_name} hooks in {settings_path}")
+PY
+}
+
 # ─────────────────────────────────────────────────────────────────────
 #  UNINSTALL
 # ─────────────────────────────────────────────────────────────────────
@@ -234,11 +431,9 @@ uninstall_claude() {
         return
     fi
 
-    info "Uninstalling plugin..."
-    claude plugin uninstall "${PLUGIN_NAME}@${MARKETPLACE_NAME}" 2>/dev/null || true
-
-    # Also uninstall spec-ops if present
-    claude plugin uninstall "alibabacloud-spec-ops@${MARKETPLACE_NAME}" 2>/dev/null || true
+    info "Uninstalling plugins..."
+    claude plugin uninstall "${PLUGIN_CORE}@${MARKETPLACE_NAME}" 2>/dev/null || true
+    claude plugin uninstall "${PLUGIN_SPECOPS}@${MARKETPLACE_NAME}" 2>/dev/null || true
 
     # Clean cache directory (claude plugin uninstall only removes the registry entry)
     local cache_dir="${HOME}/.claude/plugins/cache/${MARKETPLACE_NAME}"
@@ -251,7 +446,7 @@ uninstall_claude() {
     info "Removing marketplace..."
     claude plugin marketplace remove "${MARKETPLACE_NAME}" 2>/dev/null || true
 
-    ok "Claude Code: fully removed (plugin + cache + marketplace)."
+    ok "Claude Code: fully removed (core + spec-ops + cache + marketplace)."
 }
 
 uninstall_codex() {
@@ -266,7 +461,7 @@ uninstall_codex() {
     fi
 
     # Remove all alibabacloud entries from config.toml
-    # (hooks trust, plugin registration, MCP tool approvals, marketplace)
+    # (hooks trust for both core and spec-ops, plugin registration, MCP tool approvals, marketplace)
     local config="${HOME}/.codex/config.toml"
     if [[ -f "$config" ]]; then
         info "Cleaning config.toml..."
@@ -280,7 +475,7 @@ with open(path) as f:
 esc = re.escape(marketplace)
 # Each pattern matches a [section.header] + its body lines (until next [ or EOF)
 patterns = [
-    # [hooks.state."<marketplace>:hooks/..."]
+    # [hooks.state."<marketplace>:hooks/..."] — covers both core and spec-ops
     rf'\[hooks\.state\."(?:[^"]*@)?{esc}:hooks/[^"]*"\]\s*\n(?:(?!\[)[^\n]*\n)*',
     # [plugins."<plugin>@<marketplace>"] and sub-sections like .mcp_servers.*
     rf'\[plugins\."[^"]*@{esc}"[^\]]*\]\s*\n(?:(?!\[)[^\n]*\n)*',
@@ -303,21 +498,29 @@ else:
 PYEOF
     fi
 
-    ok "Codex: fully removed (plugin files + config entries)."
+    ok "Codex: fully removed (core + spec-ops files + config entries)."
 }
 
 uninstall_qoderwork() {
     banner "QoderWork — uninstall"
 
-    local dest="${HOME}/.qoderwork/plugins-custom/${PLUGIN_NAME}"
-    if [[ -d "$dest" ]]; then
-        rm -rf "$dest"
-        ok "Removed ${dest}"
-    else
+    # Remove both plugin directories
+    local dest_core="${HOME}/.qoderwork/plugins-custom/${PLUGIN_CORE}"
+    local dest_specops="${HOME}/.qoderwork/plugins-custom/${PLUGIN_SPECOPS}"
+
+    if [[ -d "$dest_core" ]]; then
+        rm -rf "$dest_core"
+        ok "Removed ${dest_core}"
+    fi
+    if [[ -d "$dest_specops" ]]; then
+        rm -rf "$dest_specops"
+        ok "Removed ${dest_specops}"
+    fi
+    if [[ ! -d "$dest_core" && ! -d "$dest_specops" ]]; then
         info "Nothing to remove (not installed)."
     fi
 
-    # Remove hooks from settings.json
+    # Remove hooks from settings.json (both core and spec-ops prefixes)
     local settings="${HOME}/.qoderwork/settings.json"
     if [[ -f "$settings" ]]; then
         info "Removing hooks from settings.json..."
@@ -332,7 +535,7 @@ hooks = settings.get("hooks", {})
 if not isinstance(hooks, dict):
     sys.exit(0)
 
-prefix = "alibabacloud-core/"
+prefixes = ("alibabacloud-core/", "alibabacloud-spec-ops/")
 changed = False
 for event, groups in list(hooks.items()):
     if not isinstance(groups, list):
@@ -345,7 +548,7 @@ for event, groups in list(hooks.items()):
         inner = grp.get("hooks") or []
         kept = [h for h in inner
                 if not (isinstance(h, dict) and isinstance(h.get("name"), str)
-                        and h["name"].startswith(prefix))]
+                        and any(h["name"].startswith(p) for p in prefixes))]
         if kept:
             new_grp = dict(grp)
             new_grp["hooks"] = kept
@@ -393,7 +596,7 @@ else:
 PYEOF
     fi
 
-    ok "QoderWork: uninstalled. Restart QoderWork to apply."
+    ok "QoderWork: uninstalled (core + spec-ops). Restart QoderWork to apply."
 }
 
 # ─────────────────────────────────────────────────────────────────────
