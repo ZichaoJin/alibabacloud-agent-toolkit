@@ -870,7 +870,7 @@ def main() -> int:
                     "end_timestamp": end_ms,
                 })
             else:
-                trace_response = tool_response if isinstance(tool_response, (dict, list)) else tool_result
+                trace_response = tool_response if isinstance(tool_response, (dict, list, str)) and tool_response else tool_result
                 response_data, was_truncated = trace_writer.truncate_response(trace_response)
                 trace_writer.append_trace(client, session_id, {
                     "event": "tool_end",

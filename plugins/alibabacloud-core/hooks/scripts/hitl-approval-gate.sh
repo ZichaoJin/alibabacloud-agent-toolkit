@@ -82,16 +82,22 @@ REQUESTER_PRINCIPAL_TYPE="${ALICLOUD_REQUESTER_PRINCIPAL_TYPE:-sub}"
 REQUESTER_PRINCIPAL_ID="${ALICLOUD_REQUESTER_PRINCIPAL_ID:-1052513758643380}"
 export HITL_EXPIRY_SECONDS ALICLOUD_PK REQUESTER_PRINCIPAL_TYPE REQUESTER_PRINCIPAL_ID
 
+RISK_SUMMARY_HTML=$(cat <<'RISK_EOF'
+<div style="border:1px solid #fecaca;background:#fff7f7;border-radius:14px;overflow:hidden;margin-top:4px;"><div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:linear-gradient(90deg,#fee2e2,#fff7f7);color:#b91c1c;font-size:14px;font-weight:700;border-bottom:1px solid #fecaca;"><span>⚠️</span><span>P0高危操作:</span><span style="font-size:13px;color:#374151;font-weight:400;">terraform-apply 20个资源创建</span></div><ul style="margin:0;padding:6px 14px 8px 22px;list-style:circle;color:#374151;"><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建1个VPC: </b><em style="font-style:normal;color:#6b7280;">ha-web-vpc</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建2台ECS实例: </b><em style="font-style:normal;color:#6b7280;">ecs_m、ecs_n</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建1个RDS实例: </b><em style="font-style:normal;color:#6b7280;">MySQL 8.0 HA</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建4个VSwitch: </b><em style="font-style:normal;color:#6b7280;">app_m、db_m、app_n、db_n</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建3个安全组: </b><em style="font-style:normal;color:#6b7280;">SG-ALB、SG-ECS、SG-RDS</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建1个公网ALB: </b><em style="font-style:normal;color:#6b7280;">Internet、Basic、双可用区</em></li><li style="padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建1个ALB服务器组: </b><em style="font-style:normal;color:#6b7280;">HTTP、Wrr、包含2个后端ECS</em></li><li style="padding:6px 0;font-size:13px;line-height:1.5;"><b style="color:#111827;">创建1个HTTP监听: </b><em style="font-style:normal;color:#6b7280;">HTTP:80 转发至应用服务器组</em></li></ul></div><div style="margin-top:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:11px;background:#ffedd5;color:#ea580c;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex:0 0 32px;">¥</div><div><div style="color:#c2410c;font-size:14px;font-weight:700;">成本消耗:</div><div style="font-size:13px;color:#374151;margin-top:2px;">~1000 RMB/month</div></div></div><div style="margin-top:10px;border:1px solid #fde68a;background:#fffbeb;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:11px;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex:0 0 32px;">!</div><div><div style="color:#b45309;font-size:14px;font-weight:700;">中危操作:</div><div style="font-size:13px;color:#374151;margin-top:2px;">terraform-plan 20个资源比较</div></div></div>
+RISK_EOF
+)
+export RISK_SUMMARY_HTML
+
 CREATE_PAYLOAD="$(DESCRIPTION="$DESCRIPTION" python3 -c '
 import json
 import os
 
 payload = {
     "Title": "云上高可用架构审批单",
-    "Description": "本次执行将部署一套跨可用区高可用博客架构：在 cn-shanghai 创建 VPC、6 个交换机、2 台 ECS、2 个 EIP、公网 ALB、后端服务器组、HTTP 监听、RDS MySQL 8.0 高可用版、数据库和账号，并通过 ALB 将流量转发到双 ECS 后端。",
+    "Description": "本次执行将为新业务部署一套跨可用区高可用架构。",
     "ClientAgentName": "QoderWork",
     "ServerAgentName": "AlibabaCloud HITL",
-    "RiskSummary": "本次执行会在阿里云真实创建约 24 个云资源，包括 VPC、交换机、安全组规则、2 台 ECS、2 个 EIP、ALB、RDS MySQL 高可用实例等。资源会产生按量费用，按前期方案估算约 1000 元/月，实际费用以控制台账单为准；若长期保留会持续计费。",
+    "ActionPlan": " ".join(os.environ.get("RISK_SUMMARY_HTML", "").split()),
     "ExpirySeconds": int(os.environ.get("HITL_EXPIRY_SECONDS", "300")),
     "AliyunPk": os.environ.get("ALICLOUD_PK", ""),
     "RequesterPrincipalType": os.environ.get("REQUESTER_PRINCIPAL_TYPE", ""),

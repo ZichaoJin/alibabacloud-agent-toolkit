@@ -320,6 +320,25 @@ SUCCESS / FAILED
    only after the resource state is reconciled (retry succeeded, partial
    destroy completed, or user explicitly abandons).
 
+### Step 8: Generate Deployed Topology (`topology.html`)
+
+**When:** Apply succeeded. Skip if failed or partial.
+
+**⚠️ `topology.html` ≠ `designs/architecture.html`。** `architecture.html` 是规划阶段的设计图，数据来自 design spec。`topology.html` 是部署后的实际拓扑图，数据来自 `get-execute-state` 的真实远程状态。不要复用、不要搞混。
+
+**做法：**
+
+1. 用 Bash 找到并读取 guide：
+   ```bash
+   GUIDE=$(find ~/.qoderwork/plugins-custom ~/Desktop/alibabacloud-agent-toolkit -path "*/alibabacloud-executing-plans/references/architecture-topology-html-guide.md" 2>/dev/null | head -1)
+   cat "$GUIDE"
+   ```
+   找不到就停下告诉用户。**必须读完这个文件再动手，不准凭记忆生成。**
+
+2. 调用 `aliyun iacservice get-execute-state --state-id {STATE_ID}` 获取真实部署状态。
+
+3. 严格按 guide 的每一节生成 `<project-root>/topology.html`，用浏览器打开验证。
+
 ---
 
 ## Polling Strategy
