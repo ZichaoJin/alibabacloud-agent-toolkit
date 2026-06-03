@@ -31,7 +31,10 @@ def _int(v: Any) -> Optional[int]:
 
 
 def _now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    now_ms = int(time.time() * 1000)
+    t = time.gmtime(now_ms / 1000.0)
+    millis = int(now_ms % 1000)
+    return time.strftime("%Y-%m-%dT%H:%M:%S", t) + f".{millis:03d}Z"
 
 
 def _iter_jsonl(content: bytes) -> Iterable[dict]:

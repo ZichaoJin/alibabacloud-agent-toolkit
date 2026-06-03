@@ -66,7 +66,50 @@ def _detect_client(payload_str: str) -> str:
 
 
 def _iso_from_ms(ms: int) -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ms / 1000.0))
+    t = time.gmtime(ms / 1000.0)
+    millis = int(ms % 1000)
+    return time.strftime("%Y-%m-%dT%H:%M:%S", t) + f".{millis:03d}Z"
+
+
+def _uploader_cmd() -> list:
+    """Resolve mcp-proxy invocation. Env var lets .sh override for dev."""
+    override = os.environ.get("ALIBABACLOUD_TELEMETRY_UPLOADER")
+    if override:
+        return override.split()
+    return ["uvx", "alibabacloud.mcp-proxy@latest", "plugin-telemetry"]
+
+
+def _spawn_upload(args: dict) -> None:
+    """Fire-and-forget mcp-proxy upload for per-call events. The primary
+    user_prompt_turn_start event still flows via stdout to the .sh wrapper —
+    this is only for the N extra llm_call events that don't fit the
+    single-event stdout protocol."""
+    import subprocess
+    argv = list(_uploader_cmd())
+    for key in _EMIT_ORDER:
+        v = args.get(key)
+        if v is None or v == "":
+            continue
+        argv.append(f"--{key}")
+        argv.append(str(v))
+    log_path = os.environ.get("ALIBABACLOUD_TELEMETRY_UPLOAD_LOG")
+    if log_path:
+        try:
+            out_fd = open(log_path, "ab")
+        except Exception:
+            out_fd = subprocess.DEVNULL
+    else:
+        out_fd = subprocess.DEVNULL
+    try:
+        subprocess.Popen(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=out_fd,
+            stderr=out_fd,
+            start_new_session=True,
+        )
+    except Exception:
+        pass
 
 
 def _emit(args: dict) -> None:
@@ -173,6 +216,7 @@ def main() -> int:
                 ]
                 call_ts = row.get("ts") or _iso_from_ms(stop_ts)
                 llm_calls.append({
+                    "span_id": _uuid.uuid4().hex[:16],
                     "call_index": row.get("call_index"),
                     "model": row.get("model"),
                     "ts": call_ts,
@@ -203,7 +247,7 @@ def main() -> int:
                 for call in llm_calls:
                     trace_writer.append_trace(client, session_id, {
                         "event": "llm_call",
-                        "span_id": _uuid.uuid4().hex[:16],
+                        "span_id": call["span_id"],
                         "parent_span_id": prompt_span,
                         "turn": current_turn,
                         "start_timestamp": call["ts"],
@@ -236,6 +280,31 @@ def main() -> int:
                     "llm_calls": llm_calls,
                     "tool_tokens": {},
                 })
+
+            # --- Remote telemetry: per-LLM-call uploads (fire-and-forget) ---
+            # These bypass the single-event stdout protocol because the .sh
+            # wrapper only fires one mcp-proxy invocation per hook trigger.
+            # Each call gets its own background uvx process; ordering in SLS
+            # is by start_timestamp (no callIndex needed, no model uploaded).
+            if turn_has_trace and prompt_span and llm_calls:
+                for call in llm_calls:
+                    _spawn_upload({
+                        "client-name": client,
+                        "event-type": "llm_call",
+                        "start-timestamp": call["ts"],
+                        "end-timestamp": call["ts"],
+                        "tool-name": "llm_call",
+                        "session-id": session_id,
+                        "status": "success",
+                        "turn": str(current_turn),
+                        "span-id": call["span_id"],
+                        "parent-span-id": prompt_span,
+                        "input-uncached-tokens": str(call["llm_tokens"].get("input_uncached") or 0),
+                        "input-cached-tokens":   str(call["llm_tokens"].get("input_cached")   or 0),
+                        "input-creation-tokens": str(call["llm_tokens"].get("input_creation") or 0),
+                        "output-tokens":         str(call["llm_tokens"].get("output")         or 0),
+                        "reasoning-tokens":      str(call["llm_tokens"].get("reasoning")      or 0),
+                    })
 
             # --- Remote telemetry: emit user_prompt_turn_start ---
             if turn_has_trace and prompt_span:
