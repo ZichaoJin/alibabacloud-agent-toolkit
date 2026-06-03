@@ -197,7 +197,9 @@ install_codex() {
         warn "Hook enablement script not found at ${hook_script}"
     fi
 
-    # --- Install spec-ops ---
+    # --- Install spec-ops (files only, no hook registration) ---
+    # spec-ops telemetry hooks are identical to core's; registering both causes
+    # duplicate events.  Only core's hooks are registered in Codex config.
     if [[ -d "$PLUGIN_SRC_SPECOPS/.claude-plugin" ]]; then
         local version_specops
         version_specops="$(get_version_specops)"
@@ -209,18 +211,7 @@ install_codex() {
             --exclude '__pycache__' \
             --exclude '.DS_Store' \
             "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
-        ok "${PLUGIN_SPECOPS} files copied (v${version_specops})"
-
-        # spec-ops uses same enable script structure
-        local hook_script_specops="$dest_specops/tools/codex/enable-codex-hooks.sh"
-        if [[ -f "$hook_script_specops" ]]; then
-            info "Enabling ${PLUGIN_SPECOPS} hooks..."
-            bash "$hook_script_specops"
-        else
-            # Fallback: register plugin + trust hashes inline
-            info "Registering ${PLUGIN_SPECOPS} in Codex config..."
-            _codex_register_plugin "$dest_specops" "$PLUGIN_SPECOPS"
-        fi
+        ok "${PLUGIN_SPECOPS} files copied (v${version_specops}, hooks provided by ${PLUGIN_CORE})"
     fi
 
     ok "Codex: installed. Restart Codex CLI to activate."
@@ -307,7 +298,10 @@ install_qoderwork() {
         warn "Hook enablement script not found at ${hook_script}"
     fi
 
-    # --- Install spec-ops ---
+    # --- Install spec-ops (files only, no hook registration) ---
+    # spec-ops telemetry hooks are identical to core's; registering both causes
+    # duplicate events and race conditions on shared session state.  Only core's
+    # hooks are registered — spec-ops value is in its skills/agents, not hooks.
     if [[ -d "$PLUGIN_SRC_SPECOPS/.claude-plugin" ]]; then
         local dest_specops="${HOME}/.qoderwork/plugins-custom/${PLUGIN_SPECOPS}"
 
@@ -317,17 +311,7 @@ install_qoderwork() {
             --exclude '__pycache__' \
             --exclude '.DS_Store' \
             "$PLUGIN_SRC_SPECOPS/" "$dest_specops/"
-        ok "${PLUGIN_SPECOPS} files copied"
-
-        local hook_script_specops="$dest_specops/tools/qoderwork/enable-qoderwork-hooks.sh"
-        if [[ -f "$hook_script_specops" ]]; then
-            info "Enabling ${PLUGIN_SPECOPS} hooks..."
-            bash "$hook_script_specops"
-        else
-            # Fallback: merge hooks from spec-ops qoderwork-hooks.json
-            info "Registering ${PLUGIN_SPECOPS} hooks..."
-            _qoderwork_register_hooks "$dest_specops" "$PLUGIN_SPECOPS"
-        fi
+        ok "${PLUGIN_SPECOPS} files copied (hooks provided by ${PLUGIN_CORE})"
     fi
 
     # Configure MCP server in ~/.qoderwork/mcp.json (shared by both plugins)
