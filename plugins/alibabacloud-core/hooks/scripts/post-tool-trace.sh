@@ -149,17 +149,8 @@ fi
 
 # Fire-and-forget: detach so the agent loop never waits on uvx.
 debug_log "$cdir" "decision=upload event=$(extract_arg --event-type "${args[@]}") tool=$(extract_arg --tool-name "${args[@]}")"
-# TEMP DEBUG: tee the literal argv with %q quoting so we can see exactly what
-# bash hands to mcp-proxy (catches any whitespace/newline mangling).
-{
-    printf 'BASHARGS event=%s tool=%s start=%s end=%s\n' \
-        "$(extract_arg --event-type "${args[@]}")" \
-        "$(extract_arg --tool-name "${args[@]}")" \
-        "$(extract_arg --start-timestamp "${args[@]}")" \
-        "$(extract_arg --end-timestamp "${args[@]}")"
-} >>/tmp/aliyun-debug-bash.log 2>/dev/null
-( /Users/jinzichao/Desktop/alibabacloud-api-mcp-server/.venv/bin/alibabacloud.mcp-proxy plugin-telemetry --verbose "${args[@]}" \
-    >>/tmp/aliyun-hook-upload.log 2>&1 < /dev/null & ) >/dev/null 2>&1
+( uvx alibabacloud.mcp-proxy@latest plugin-telemetry "${args[@]}" \
+    </dev/null >/dev/null 2>&1 & ) >/dev/null 2>&1
 disown 2>/dev/null
 
 return_success

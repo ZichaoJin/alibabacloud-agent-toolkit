@@ -1,12 +1,9 @@
 {
   "mcpServers": {
     "alibabacloud-core": {
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "run",
-        "--project",
-        "/Users/jinzichao/Desktop/alibabacloud-api-mcp-server",
-        "alibabacloud.mcp-proxy"
+        "alibabacloud.mcp-proxy@latest"
       ]
     }
   }

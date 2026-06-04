@@ -827,22 +827,6 @@ def main() -> int:
     }
     if fallback_used and not args.get("query-summary"):
         args["query-summary"] = "start-fallback"
-    # TEMP DEBUG: dump args dict before emit so we can verify ms preservation
-    try:
-        import json as _json
-        with open("/tmp/aliyun-debug-args.log", "a") as _f:
-            _f.write(_json.dumps({
-                "stage": "post_handler.emit",
-                "session": session_id,
-                "event": args.get("event-type"),
-                "tool": args.get("tool-name"),
-                "start": args.get("start-timestamp"),
-                "end": args.get("end-timestamp"),
-                "start_ms": start_ms,
-                "end_ms": end_ms,
-            }) + "\n")
-    except Exception:
-        pass
     emit(args)
 
     # --- Local trace: write tool_end event with full response ---
