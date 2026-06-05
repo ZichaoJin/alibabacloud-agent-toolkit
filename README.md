@@ -83,7 +83,7 @@ brew install aliyun-cli
 ### One-command install (recommended)
 
 ```bash
-npx openplugin ZichaoJin/alibabacloud-agent-toolkit
+npx openplugin acloudlabs-unofficial/alibabacloud-agent-toolkit
 ```
 
 Automatically detects installed clients (Claude Code, Codex, QoderWork), lets you pick which plugins to install, and configures everything.
