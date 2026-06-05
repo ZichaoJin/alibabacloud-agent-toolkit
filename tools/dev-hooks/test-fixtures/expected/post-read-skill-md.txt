@@ -22,3 +22,5 @@ alibabacloud-core
 start-fallback
 --span-id
 toolu_readskill
+--skill-tag
+alibabacloud-core:mcp-core-best-practices

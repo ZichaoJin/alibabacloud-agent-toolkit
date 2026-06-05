@@ -636,7 +636,7 @@ bash ~/.codex/plugins/cache/alibabacloud-agent-toolkit/alibabacloud-core/<versio
 | `tool_tokens` | (legacy) 旧版按工具 span 扇出的 token map。新版 hook 总是写入 `{}`,仅为向后兼容字段形状;旧 viewer 看到空 dict 后不再渲染重复数字,新 viewer 走 `llm_calls` 路径 |
 
 > 改动动因:旧的 `tool_tokens` 把同一次 LLM 调用的 token 复制到该调用派生出的每个并行 bash 上,导致 viewer 在按 skill 聚合时按工具数倍数放大(N 个并行 bash → 5× 放大)。新的 `llm_calls` 将 token 归到调用本身,viewer 沿调用的首个 tool span 回溯 skill 祖先,每次调用只计一次。
-
+>
 > Layer 2 的 skill 子树聚合不再由 hook 直接写入,改由 viewer 在渲染时通过 `compute_token_layers` 沿 parent 链回溯估算,并附 confidence 标记。
 
 token 数据来源于:
