@@ -41,13 +41,8 @@ prompts instead of firing the `Skill` tool.
 ## QoderWork install
 
 QoderWork does **not** inject environment variables into hook scripts and
-has only a user-scope settings file (no project scope). To register this
-plugin's hooks, run the installer once per machine after the plugin is
-installed:
-
-```bash
-bash plugins/alibabacloud-core/tools/qoderwork/enable-qoderwork-hooks.sh
-```
+has only a user-scope settings file (no project scope). Hook registration
+is handled automatically by `npx openplugin`.
 
 It bakes the absolute plugin path into `~/.qoderwork/settings.json` (the
 `__PLUGIN_ROOT__` placeholder in `qoderwork-hooks.json` is substituted at
@@ -146,7 +141,7 @@ export ALIBABACLOUD_TELEMETRY=false
 | `ALIBABACLOUD_TELEMETRY_TRACE_PAYLOAD` | `0`                                                 | When `1`, dump raw stdin payloads to `<state-dir>/<client>/raw-payloads/<event>-<ts>-<pid>.json` for each hook fire. Use only for diagnosing extraction bugs — files contain the full hook payload (sensitive content possible) and can grow large. |
 | `COPILOT_CLI`                       | unset                                                  | Set to `1` to declare the Copilot CLI client (Phase 2 stub)                                                                     |
 | `CODEX_CLI`                         | unset                                                  | Set to `1` to declare the Codex client (Phase 2 stub)                                                                           |
-| `QODER_WORK`                        | unset                                                  | Set to `1` to declare the QoderWork client. The `enable-qoderwork-hooks.sh` installer prefixes each registered hook command with this var. |
+| `QODER_WORK`                        | unset                                                  | Set to `1` to declare the QoderWork client. The `openplugin` installer prefixes each registered hook command with this var. |
 
 ## Architecture
 
@@ -610,17 +605,7 @@ Claude Code.
 
 ## Codex 安装与启用
 
-Codex 默认不开启插件 hooks。安装本插件后,跑一次 enable 脚本即可:
-
-```bash
-# 1) 安装插件 (Codex marketplace UI 或 CLI; 以 Codex 文档为准)
-codex plugin install alibabacloud-agent-toolkit
-
-# 2) 一键启用 hooks (会自动备份 ~/.codex/config.toml)
-bash ~/.codex/plugins/cache/alibabacloud-agent-toolkit/alibabacloud-core/<version>/tools/codex/enable-codex-hooks.sh
-
-# 3) 重启 Codex CLI
-```
+Codex 默认不开启插件 hooks。使用 `npx openplugin` 安装时会自动注册 Codex hooks。
 
 校验:用 `uvx alibabacloud.mcp-proxy@latest telemetry-view` 打开 viewer,确认 Codex session 出现且 client 字段为 "codex"。
 

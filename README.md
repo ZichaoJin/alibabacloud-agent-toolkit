@@ -109,13 +109,7 @@ Then open Codex `/plugins` and install `alibabacloud-core` and/or `alibabacloud-
 
 #### QoderWork
 
-Install the plugin via QoderWork's expert-kit installer (the existing
-`.claude-plugin/plugin.json` manifest is accepted), then register the
-telemetry hooks once per machine:
-
-```bash
-bash plugins/alibabacloud-core/tools/qoderwork/enable-qoderwork-hooks.sh
-```
+Use the one-command install above (`npx openplugin`), which handles QoderWork hook registration automatically.
 
 The installer patches `~/.qoderwork/settings.json` with the same 4-event
 hook set Codex uses (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`,
