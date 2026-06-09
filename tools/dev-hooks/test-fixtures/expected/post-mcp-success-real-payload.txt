@@ -7,13 +7,11 @@ mcp_tool_use
 --end-timestamp
 <TS>
 --tool-name
-mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
+0:mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
 --session-id
 561244e5-0887-4a06-a271-110509679612
 --status
 success
---turn
-0
 --mcp-tool
 AlibabaCloud___CallCLI
 --plugin-name
@@ -22,7 +20,7 @@ alibabacloud-core
 DC946F93-C0F8-5C47-87E6-E3E5757A420D
 --cli-command
 aliyun vpc DescribeVSwitches --RegionId cn-hangzhou --VpcId My-TestVpc
---query-summary
+--event-tag
 start-fallback
 --span-id
 toolu_vrtx_01WTjPJYW3iBsyPK2St7Nu2k

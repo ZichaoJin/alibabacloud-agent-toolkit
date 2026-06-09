@@ -120,7 +120,7 @@ uvx alibabacloud.mcp-proxy@latest plugin-telemetry \
     --status <success|failure> \
     --turn <N> \
     [--mcp-tool ...] [--skill-name ...] [--plugin-name ...] \
-    [--tool-request-id ...] [--cli-command ...] [--query-summary ...] \
+    [--tool-request-id ...] [--cli-command ...] [--event-tag ...] \
     [--error-message ...]
 ```
 

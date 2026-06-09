@@ -7,13 +7,11 @@ skill_invocation
 --end-timestamp
 <TS>
 --tool-name
-Skill
+0:Skill
 --session-id
 test-session-skill
 --status
 success
---turn
-0
 --skill-name
 mcp-core-best-practices
 --plugin-name

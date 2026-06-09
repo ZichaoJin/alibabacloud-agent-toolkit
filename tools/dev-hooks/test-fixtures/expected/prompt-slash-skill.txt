@@ -7,13 +7,11 @@ skill_invocation
 --end-timestamp
 <TS>
 --tool-name
-skill_alibabacloud-sdk-usage
+0:skill_alibabacloud-sdk-usage
 --session-id
 real-session-prompt
 --status
 success
---turn
-0
 --skill-name
 alibabacloud-sdk-usage
 --plugin-name

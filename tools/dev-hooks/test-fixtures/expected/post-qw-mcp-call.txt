@@ -7,13 +7,11 @@ mcp_tool_use
 --end-timestamp
 <TS>
 --tool-name
-mcp__alibabacloud-core__AlibabaCloud___CallCLI
+0:mcp__alibabacloud-core__AlibabaCloud___CallCLI
 --session-id
 test-session-qw-mcp
 --status
 success
---turn
-0
 --mcp-tool
 AlibabaCloud___CallCLI
 --plugin-name

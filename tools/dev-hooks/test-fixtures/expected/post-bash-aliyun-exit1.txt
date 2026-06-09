@@ -7,16 +7,14 @@ cli_command_use
 --end-timestamp
 <TS>
 --tool-name
-Bash
+0:Bash
 --session-id
 test-session-bashfail
 --status
 failure
---turn
-0
 --cli-command
 aliyun ecs DescribeInstances
---query-summary
+--event-tag
 start-fallback
 --error-message
 ConnectionRefused

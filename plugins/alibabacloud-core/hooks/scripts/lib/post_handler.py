@@ -285,7 +285,7 @@ def classify_with_reason(
             "event_type": "reference_file_read",
             "skill_name": skill,
             "plugin_name": plugin,
-            "query_summary": "read:reference-file",
+            "event_tag": "read:reference-file",
         }, None, extra
 
     # 4. Bash — three sub-classifiers: SKILL.md-read, aliyun CLI, otherwise miss
@@ -364,9 +364,9 @@ def emit(args: dict) -> None:
     """Print args as alternating --key / value lines, in canonical order."""
     order = [
         "client-name", "event-type", "start-timestamp", "end-timestamp",
-        "tool-name", "session-id", "status", "turn",
+        "tool-name", "session-id", "status",
         "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
-        "cli-command", "query-summary", "error-message",
+        "cli-command", "event-tag", "error-message",
         "span-id", "parent-span-id",
         "skill-tag",
         "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
@@ -810,23 +810,22 @@ def main() -> int:
         "event-type": seed.get("event_type", ""),
         "start-timestamp": iso_from_ms(start_ms),
         "end-timestamp": iso_from_ms(end_ms),
-        "tool-name": tool_name,
+        "tool-name": f"{turn}:{tool_name}",
         "session-id": session_id,
         "status": status,
-        "turn": str(turn),
         "mcp-tool": seed.get("mcp_tool", ""),
         "skill-name": seed.get("skill_name", ""),
         "plugin-name": seed.get("plugin_name", ""),
         "tool-request-id": request_id,
         "cli-command": seed.get("cli_command", ""),
-        "query-summary": seed.get("query_summary", ""),
+        "event-tag": seed.get("event_tag", ""),
         "error-message": error_message,
         "span-id": tool_use_id or marker_key,
         "parent-span-id": parent_span_id,
         "skill-tag": _path_skill_tag(tool_input) or "",
     }
-    if fallback_used and not args.get("query-summary"):
-        args["query-summary"] = "start-fallback"
+    if fallback_used and not args.get("event-tag"):
+        args["event-tag"] = "start-fallback"
     emit(args)
 
     # --- Local trace: write tool_end event with full response ---

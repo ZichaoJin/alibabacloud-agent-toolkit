@@ -7,13 +7,11 @@ cli_command_use
 --end-timestamp
 <TS>
 --tool-name
-Bash
+0:Bash
 --session-id
 test-session-bash
 --status
 success
---turn
-0
 --tool-request-id
 BASH-REQ-001
 --cli-command

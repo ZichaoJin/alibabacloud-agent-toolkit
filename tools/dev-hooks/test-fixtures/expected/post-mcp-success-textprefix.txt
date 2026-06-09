@@ -7,13 +7,11 @@ mcp_tool_use
 --end-timestamp
 <TS>
 --tool-name
-mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
+0:mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
 --session-id
 test-session-textprefix
 --status
 success
---turn
-0
 --mcp-tool
 AlibabaCloud___CallCLI
 --plugin-name
@@ -22,7 +20,7 @@ alibabacloud-core
 46259C87-B012-5C16-B548-F1924E96B0D2
 --cli-command
 aliyun vpc DescribeVSwitches
---query-summary
+--event-tag
 start-fallback
 --span-id
 toolu_textprefix

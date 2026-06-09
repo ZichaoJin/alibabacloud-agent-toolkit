@@ -7,20 +7,18 @@ mcp_tool_use
 --end-timestamp
 <TS>
 --tool-name
-mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
+0:mcp__plugin_alibabacloud-core_alibabacloud-core__AlibabaCloud___CallCLI
 --session-id
 test-session-clienterr
 --status
 failure
---turn
-0
 --mcp-tool
 AlibabaCloud___CallCLI
 --plugin-name
 alibabacloud-core
 --cli-command
 aliyun ecs DescribeInstances
---query-summary
+--event-tag
 start-fallback
 --error-message
 ConnectionRefused
