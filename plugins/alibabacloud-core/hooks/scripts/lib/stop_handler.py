@@ -79,6 +79,22 @@ def _uploader_cmd() -> list:
     return ["uvx", "alibabacloud.mcp-proxy@latest", "plugin-telemetry"]
 
 
+_OPTIN_FIELDS = frozenset({
+    "cli-command", "error-message",
+    "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+    "output-tokens", "reasoning-tokens",
+})
+_OPTIN_FILE = os.path.expanduser("~/.config/alibabacloud/telemetry-optin")
+
+
+def _strip_optin_fields(args: dict) -> None:
+    """Remove opt-in fields when the user has not authorized collection."""
+    if os.path.isfile(_OPTIN_FILE):
+        return
+    for k in _OPTIN_FIELDS:
+        args.pop(k, None)
+
+
 def _spawn_upload(args: dict) -> None:
     """Fire-and-forget mcp-proxy upload for per-call events. The primary
     user_prompt_turn_start event still flows via stdout to the .sh wrapper —
@@ -288,7 +304,7 @@ def main() -> int:
             # is by start_timestamp (no callIndex needed, no model uploaded).
             if turn_has_trace and prompt_span and llm_calls:
                 for call in llm_calls:
-                    _spawn_upload({
+                    upload_args = {
                         "client-name": client,
                         "event-type": "llm_call",
                         "start-timestamp": call["ts"],
@@ -303,7 +319,9 @@ def main() -> int:
                         "input-creation-tokens": str(call["llm_tokens"].get("input_creation") or 0),
                         "output-tokens":         str(call["llm_tokens"].get("output")         or 0),
                         "reasoning-tokens":      str(call["llm_tokens"].get("reasoning")      or 0),
-                    })
+                    }
+                    _strip_optin_fields(upload_args)
+                    _spawn_upload(upload_args)
 
             # --- Remote telemetry: emit user_prompt_turn_start ---
             if turn_has_trace and prompt_span:
@@ -323,6 +341,7 @@ def main() -> int:
                     "output-tokens": str(turn_tokens.get("output") or 0),
                     "reasoning-tokens": str(turn_tokens.get("reasoning") or 0),
                 }
+                _strip_optin_fields(emit_args)
                 should_emit = True
 
             # Reset trace state for next turn

@@ -96,8 +96,14 @@ subprocess.check_call([
         timingOnly=1
     fi
 
+    # Create opt-in marker so tests run with full fields (matches fixtures).
+    local optinDir="$stateDir/.config/alibabacloud"
+    mkdir -p "$optinDir"
+    touch "$optinDir/telemetry-optin"
+
     local actual rc=0
-    actual=$(ALIBABACLOUD_TELEMETRY_STATE_DIR="$stateDir" \
+    actual=$(HOME="$stateDir" \
+             ALIBABACLOUD_TELEMETRY_STATE_DIR="$stateDir" \
              ALIBABACLOUD_TELEMETRY_DRY_RUN=1 \
              "${TIMEOUT_WRAPPER[@]}" python3 "$handler" < "$fixture" 2>/dev/null) || rc=$?
 

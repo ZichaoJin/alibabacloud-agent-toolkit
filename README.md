@@ -148,16 +148,35 @@ The SDK skill is restricted to `mcp__alibabacloud-core__AlibabaCloud___CallCLI`,
 
 This plugin collects anonymous usage telemetry to help improve product quality. Collection is **strictly limited to Alibaba Cloud tool calls** — no user prompts, code content, or file paths are transmitted.
 
-**What is collected:**
+**What is collected (enabled by default):**
 
-- Tool name (e.g. `AlibabaCloud___CallCLI`)
-- Call status (success / failure) and error code
-- Request ID (Alibaba Cloud API request tracking)
-- Duration and timestamp
-- **The full input parameters for every Alibaba Cloud tool call**, captured verbatim for audit (all inputs are considered non-sensitive Alibaba Cloud operational context):
-  - **Bash `aliyun ...`** — the full shell command (cap 2000 chars)
-  - **MCP `AlibabaCloud___CallCLI`** — the full shell command (cap 2000 chars)
-  - **All other MCP `AlibabaCloud___*` tools** (`ListProducts`, `ListApis`, `ListProductRegions`, `SearchApis`, `SearchDocument`, `GetApiDefinition`, `GenerateCLICommand`, `ReadDocument`, …) — the full `tool_input` as compact JSON (cap 4000 chars)
+All fields below describe Alibaba Cloud plugin behavior only — no user prompts, code content, local file paths, or personal information is included.
+
+| Field | Description |
+|---|---|
+| startTimestamp / endTimestamp | Alibaba Cloud tool call start and end time (ISO 8601 UTC) |
+| clientName | Agent client type (`claude-code`, `codex`, `copilot-cli`, `qoderwork`, `vscode`) |
+| eventType | Alibaba Cloud event category (`skill_invocation`, `mcp_tool_use`, `cli_command_use`, `subagent_dispatch`, `reference_file_read`, `user_prompt_turn_start`, `llm_call`) |
+| sessionId / mcpSessionId | Anonymous session identifiers (client-assigned, not linked to any user account) |
+| skillName / pluginName / skillTag | Alibaba Cloud skill and plugin identity (e.g. `alibabacloud-core`, `alibabacloud-deploy`) |
+| mcpTool / toolName | Alibaba Cloud MCP tool name (e.g. `AlibabaCloud___CallCLI`) and raw tool entry point |
+| eventTag | Fixed Alibaba Cloud event marker (e.g. `read:reference-file`, `start-fallback`) |
+| status | Alibaba Cloud tool call outcome (`success` / `failure`) |
+| toolRequestId | Alibaba Cloud OpenAPI RequestId for server-side log correlation |
+
+**Additional fields (require user opt-in):**
+
+These fields contain sanitized Alibaba Cloud operational context. They are collected to improve Alibaba Cloud skill and tool quality, and require explicit user authorization.
+
+| Field | Description |
+|---|---|
+| cliCommand | Sanitized `aliyun` CLI command or Alibaba Cloud MCP tool input JSON (all credentials stripped, cap 2000–4000 chars) |
+| errorMessage | Alibaba Cloud API error class/code only (e.g. `NoPermission`, `Throttling`) — not free-text |
+| inputUncachedTokens | LLM uncached input tokens (for turns involving Alibaba Cloud tools) |
+| inputCachedTokens | LLM cached input tokens (for turns involving Alibaba Cloud tools) |
+| inputCreationTokens | LLM cache creation tokens (for turns involving Alibaba Cloud tools) |
+| outputTokens | LLM output tokens (for turns involving Alibaba Cloud tools) |
+| reasoningTokens | LLM reasoning tokens (for turns involving Alibaba Cloud tools) |
 
 **Privacy protection:**
 

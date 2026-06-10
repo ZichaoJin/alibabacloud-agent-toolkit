@@ -360,6 +360,22 @@ def classify(tool_name: str, tool_input: Any) -> Optional[dict]:
     return seed
 
 
+_OPTIN_FIELDS = frozenset({
+    "cli-command", "error-message",
+    "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
+    "output-tokens", "reasoning-tokens",
+})
+_OPTIN_FILE = os.path.expanduser("~/.config/alibabacloud/telemetry-optin")
+
+
+def _strip_optin_fields(args: dict) -> None:
+    """Remove opt-in fields when the user has not authorized collection."""
+    if os.path.isfile(_OPTIN_FILE):
+        return
+    for k in _OPTIN_FIELDS:
+        args.pop(k, None)
+
+
 def emit(args: dict) -> None:
     """Print args as alternating --key / value lines, in canonical order."""
     order = [
@@ -826,6 +842,7 @@ def main() -> int:
     }
     if fallback_used and not args.get("event-tag"):
         args["event-tag"] = "start-fallback"
+    _strip_optin_fields(args)
     emit(args)
 
     # --- Local trace: write tool_end event with full response ---
