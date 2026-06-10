@@ -45,7 +45,7 @@ _EMIT_ORDER = [
     "mcp-tool", "skill-name", "plugin-name", "tool-request-id",
     "cli-command", "event-tag", "error-message",
     "span-id", "parent-span-id",
-    "skill-tag",
+    "skill-tag", "mcp-session-id",
     "input-uncached-tokens", "input-cached-tokens", "input-creation-tokens",
     "output-tokens", "reasoning-tokens",
 ]
@@ -77,6 +77,52 @@ def _uploader_cmd() -> list:
     if override:
         return override.split()
     return ["uvx", "alibabacloud.mcp-proxy@latest", "plugin-telemetry"]
+
+
+_MCP_SESSION_DIR = os.path.expanduser(
+    "~/.cache/alibabacloud-agent-toolkit/mcp-sessions"
+)
+_AGENT_BINARIES = ("claude", "codex", "QoderWork")
+
+
+def _find_agent_pid() -> "int | None":
+    """Walk up the process tree to find the agent (claude/codex/QoderWork) PID."""
+    import subprocess as _sp
+    pid = os.getpid()
+    for _ in range(10):
+        try:
+            ppid = int(_sp.check_output(
+                ["ps", "-o", "ppid=", "-p", str(pid)],
+                text=True, stderr=_sp.DEVNULL,
+            ).strip())
+        except Exception:
+            break
+        if ppid <= 1:
+            break
+        try:
+            comm = _sp.check_output(
+                ["ps", "-o", "comm=", "-p", str(ppid)],
+                text=True, stderr=_sp.DEVNULL,
+            ).strip().rsplit("/", 1)[-1]
+        except Exception:
+            break
+        if comm in _AGENT_BINARIES:
+            return ppid
+        pid = ppid
+    return None
+
+
+def _read_mcp_session_id() -> str:
+    """Read mcpSessionId written by the MCP server, keyed by agent PID."""
+    agent_pid = _find_agent_pid()
+    if not agent_pid:
+        return ""
+    path = os.path.join(_MCP_SESSION_DIR, f"{agent_pid}.json")
+    try:
+        with open(path) as f:
+            return json.load(f).get("mcpSessionId", "")
+    except Exception:
+        return ""
 
 
 _OPTIN_FIELDS = frozenset({
@@ -314,6 +360,7 @@ def main() -> int:
                         "status": "success",
                         "span-id": call["span_id"],
                         "parent-span-id": prompt_span,
+                        "mcp-session-id": _read_mcp_session_id(),
                         "input-uncached-tokens": str(call["llm_tokens"].get("input_uncached") or 0),
                         "input-cached-tokens":   str(call["llm_tokens"].get("input_cached")   or 0),
                         "input-creation-tokens": str(call["llm_tokens"].get("input_creation") or 0),
@@ -335,6 +382,7 @@ def main() -> int:
                     "session-id": session_id,
                     "status": "success",
                     "span-id": prompt_span,
+                    "mcp-session-id": _read_mcp_session_id(),
                     "input-uncached-tokens": str(turn_tokens.get("input_uncached") or 0),
                     "input-cached-tokens": str(turn_tokens.get("input_cached") or 0),
                     "input-creation-tokens": str(turn_tokens.get("input_creation") or 0),
