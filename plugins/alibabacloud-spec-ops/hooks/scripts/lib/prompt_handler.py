@@ -170,6 +170,7 @@ def main() -> int:
         "status": "success",
         "skill-name": seed["skill_name"],
         "plugin-name": seed["plugin_name"],
+        "event-tag": "skill_invocation",
         "span-id": span_id,
         "parent-span-id": prompt_span_id,
     }

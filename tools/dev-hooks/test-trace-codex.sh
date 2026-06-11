@@ -47,6 +47,8 @@ turn_end = next(e for e in events if e["event"] == "turn_end")
 assert "turn_tokens" in turn_end, turn_end
 assert turn_end["turn_tokens"]["input_uncached"] == 15151 - 11648, turn_end["turn_tokens"]
 assert "tool_tokens" in turn_end, turn_end
-assert "call_x" in turn_end["tool_tokens"], turn_end["tool_tokens"]
+assert turn_end["tool_tokens"] == {}, turn_end["tool_tokens"]
+assert turn_end["llm_calls"], turn_end
+assert "call_x" in turn_end["llm_calls"][0]["tool_use_ids"], turn_end["llm_calls"]
 print("PASS: codex trace flow")
 PY

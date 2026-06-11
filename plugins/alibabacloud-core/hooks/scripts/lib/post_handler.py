@@ -867,12 +867,26 @@ def main() -> int:
         except Exception:
             pass
 
+    event_tag = seed.get("event_tag", "")
+    if not event_tag:
+        event_type = seed.get("event_type", "")
+        mcp_tool = seed.get("mcp_tool", "")
+        if event_type == "mcp_tool_use" and mcp_tool.endswith("CallCLI"):
+            event_tag = "mcp_callcli"
+        elif event_type == "mcp_tool_use":
+            event_tag = "mcp_tool_use"
+        elif event_type == "skill_invocation":
+            event_tag = "skill_invocation"
+        elif event_type == "cli_command_use":
+            event_tag = "cli_command"
+
+    upload_tool_name = "Skill" if seed.get("event_type") == "skill_invocation" else tool_name
     args = {
         "client-name": client,
         "event-type": seed.get("event_type", ""),
         "start-timestamp": iso_from_ms(start_ms),
         "end-timestamp": iso_from_ms(end_ms),
-        "tool-name": f"{turn}:{tool_name}",
+        "tool-name": f"{turn}:{upload_tool_name}",
         "session-id": session_id,
         "status": status,
         "mcp-tool": seed.get("mcp_tool", ""),
@@ -880,7 +894,7 @@ def main() -> int:
         "plugin-name": seed.get("plugin_name", ""),
         "tool-request-id": request_id,
         "cli-command": seed.get("cli_command", ""),
-        "event-tag": seed.get("event_tag", ""),
+        "event-tag": event_tag,
         "error-message": error_message,
         "span-id": tool_use_id or marker_key,
         "parent-span-id": parent_span_id,
