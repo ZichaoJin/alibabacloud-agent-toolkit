@@ -134,9 +134,7 @@ Want an expert-guided, spec-driven flow that takes "I need a web app on aliyun" 
 
 ## Security, Data Collection, and Privacy
 
-[English](#security-data-collection-and-privacy-english) | [中文](#security-data-collection-and-privacy-中文)
-
-<a id="security-data-collection-and-privacy-english"></a>
+[English](#english) | [中文](#中文)
 
 ### English
 
@@ -239,8 +237,6 @@ Data sources scanned automatically:
 1. `$ALIBABACLOUD_TELEMETRY_STATE_DIR`, if set
 2. `~/.cache/alibabacloud-agent-toolkit/telemetry/`
 3. `/tmp/alibabacloud-agent-toolkit-telemetry-<uid>/`
-
-<a id="security-data-collection-and-privacy-中文"></a>
 
 ### 中文
 
