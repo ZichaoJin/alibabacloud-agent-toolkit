@@ -132,7 +132,7 @@ Want an expert-guided, spec-driven flow that takes "I need a web app on aliyun" 
 
 **Day-2 ready.** 再说一句"升配 RDS / 加 Redis / 缩容"，原 `design.md` 自动加载，在已有 `state_id` 上做增量 plan/apply，不重建已有资源。所有产物保存在 `.aliyun-ai-ops-spec/{name}/`，跨会话可审、可迭代。
 
-## Security, Data Collection, and Privacy
+## Data Collection
 
 [English](#english) | [中文](#中文)
 
@@ -140,13 +140,11 @@ Want an expert-guided, spec-driven flow that takes "I need a web app on aliyun" 
 
 #### Data Collection
 
-This toolkit may collect limited, de-identified operational telemetry and send it to Alibaba Cloud. Alibaba Cloud uses this information to provide, maintain, and improve related services. You may turn off remote telemetry as described below.
+This toolkit may collect information about you and your use of the toolkit and send it to Alibaba Cloud. Alibaba Cloud may use this information to provide, maintain, and improve related services. You may turn off remote telemetry as described below.
 
-By default, remote telemetry only includes basic information about Alibaba Cloud plugin activity, as listed in "What is collected by default". It does not include user prompts, source code, local file contents, or full tool responses.
+The default collection is limited to basic information about Alibaba Cloud plugin activity, as listed in "What is collected by default". With your explicit authorization, the toolkit may also collect additional troubleshooting information, as listed in "Additional opt-in fields". Sensitive credentials and personal information are removed before transmission.
 
-With explicit user authorization, the toolkit may also collect additional operational context for troubleshooting, as listed in "Additional opt-in fields". Sensitive credentials and personal information are removed before transmission.
-
-Some features may enable you, Alibaba Cloud, or integrated services to collect operational data from users of applications, agents, workflows, or cloud environments that you build, operate, or expose through this toolkit. If you use such features, you are responsible for complying with applicable laws, providing appropriate notices to your users, and obtaining any required consents.
+Some features in this toolkit may enable you and Alibaba Cloud to collect data from users of your applications. If you use these features, you must comply with applicable laws, including providing appropriate notice and obtaining required consent. Your use of this toolkit constitutes your consent to these practices.
 
 ##### What is collected by default
 
@@ -242,13 +240,11 @@ Data sources scanned automatically:
 
 #### 数据采集
 
-本工具包可能会采集有限的、去标识化的操作遥测并发送给阿里云。阿里云会将这些信息用于提供、维护和改进相关服务。您可以按下方说明关闭远程遥测。
+本工具包可能会采集关于您以及您使用本工具包的信息，并将其发送给阿里云。阿里云可能会使用这些信息来提供、维护和改进相关服务。您可以按照下方说明关闭远程遥测。
 
-默认情况下，远程遥测只包含阿里云插件活动的基础运行信息，具体字段见“默认采集内容”。这些信息不包含您的 prompt、源码、本地文件内容或完整工具响应。
+默认采集内容仅包含阿里云插件活动相关的基础运行信息，具体字段见“默认采集内容”。在您明确授权后，本工具包才会额外采集用于问题排查的补充信息，具体字段见“额外授权字段”。敏感凭证和个人信息会在传输前被移除。
 
-在您明确授权后，本工具包才会额外采集用于问题排查的操作上下文，具体字段见“额外授权字段”。敏感凭证和个人信息会在传输前被移除。
-
-某些功能可能使您、阿里云或集成服务采集您通过本工具包构建、运行或开放的应用、Agent、工作流或云环境用户的操作数据。若使用此类功能，您有责任遵守适用法律，向您的用户提供适当告知，并在需要时取得必要同意。
+此外，本工具包中的某些功能可能会使您和阿里云能够收集您应用程序用户的数据。如果您使用这些功能，则必须遵守适用法律，包括向您的应用程序用户提供适当通知并取得必要同意。您使用本工具包即表示您同意这些做法。
 
 ##### 默认采集内容
 
