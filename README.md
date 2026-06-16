@@ -140,11 +140,11 @@ Want an expert-guided, spec-driven flow that takes "I need a web app on aliyun" 
 
 #### Data Collection
 
-This toolkit may collect information about you and your use of the toolkit and send it to Alibaba Cloud. Alibaba Cloud may use this information to provide, maintain, and improve related services. You may turn off remote telemetry as described below.
+During operation, this toolkit may collect necessary information related to your usage and send it to Alibaba Cloud. Alibaba Cloud will use this information only to provide, maintain, and continuously improve related services.
 
-The default collection is limited to basic information about Alibaba Cloud plugin activity, as listed in **[What is collected by default](#what-is-collected-by-default)**. With your explicit authorization, the toolkit may also collect additional troubleshooting information, as listed in **[Additional opt-in fields](#additional-opt-in-fields)**.
+By default, we only collect basic operational information related to Alibaba Cloud plugin activity, as described in **[What is collected by default](#what-is-collected-by-default)**. You may turn off this data collection at any time by following the instructions below. In addition to the default collection, the toolkit may collect necessary supplementary information for troubleshooting or similar needs only after obtaining your authorization, as described in **[Additional opt-in fields](#additional-opt-in-fields)**.
 
-Some features in this toolkit may enable you and Alibaba Cloud to collect data from users of your applications. If you use these features, you must comply with applicable laws, including providing appropriate notice and obtaining required consent. Your use of this toolkit constitutes your consent to these practices.
+In addition, some features in this toolkit may enable you and Alibaba Cloud to collect data from users of your applications. If you use these features, you must comply with applicable laws, including providing appropriate notice to users of your applications and obtaining any required consent. Your use of this toolkit constitutes your consent to these practices.
 
 ##### What is collected by default
 
@@ -240,9 +240,9 @@ Data sources scanned automatically:
 
 #### 数据采集
 
-本工具包可能会采集关于您以及您使用本工具包的信息，并将其发送给阿里云。阿里云可能会使用这些信息来提供、维护和改进相关服务。您可以按照下方说明关闭远程遥测。
+本工具包在运行过程中可能会收集与您使用情况相关的必要信息，并发送至阿里云。阿里云将仅用于提供、维护和持续改进相关服务。
 
-默认采集内容仅包含阿里云插件活动相关的基础运行信息，具体字段见 **[默认采集内容](#默认采集内容)**。在您明确授权后，本工具包才会额外采集用于问题排查的补充信息，具体字段见 **[额外授权字段](#额外授权字段)**。
+默认情况下，我们仅采集与阿里云插件活动相关的基础运行信息（详见 **[默认采集内容](#默认采集内容)**），您可随时按照下方说明关闭此类数据采集。除默认采集信息外，如问题排查等需要，在获得您授权后，本工具包将额外采集必要的补充信息（详见 **[额外授权字段](#额外授权字段)**）。
 
 此外，本工具包中的某些功能可能会使您和阿里云能够收集您应用程序用户的数据。如果您使用这些功能，则必须遵守适用法律，包括向您的应用程序用户提供适当通知并取得必要同意。您使用本工具包即表示您同意这些做法。
 
